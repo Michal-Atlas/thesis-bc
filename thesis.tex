@@ -16,6 +16,27 @@
 
 \chap Introduction
 
+Our computing devices have come a long way in terms of speed
+and of course in terms of operating complexity.
+This complexity can hold back very general purpose processing units
+in performance when it comes to highly specialized tasks.
+For a long time GPUs were used where a large number
+of specialized identical operations needed to be performed on
+a vast array of differing data inputs,
+as their specialized design for this use-case made them incomparably faster than
+using a common general purpose CPU.
+Though most often associated with their namesake of graphics,
+they excel at many applications and have become a
+valuable tool when working with neural networks.
+
+Recently even more specialized hardware has become available
+to meet the rising demand in having access to these technologies
+in more portable devices or for use in embedded situations.
+Neural Processing Units\fnote{Historically sometimes called VPUs, V standing for Versatile},
+are becoming more common,
+however these don't often come with universal drivers
+and the most widespread standard today has no freely adoptable implementation.
+
 \sec Goals
 
 This thesis will initially lay out the defined and known terms used in the context of neural nets, such as hardware, alternate names of known concepts or file formats.
@@ -28,15 +49,20 @@ Finally, we discuss what this means for PikeOS integration of NPU support.
 \sec Delegates
 \sec File Formats
 
-\secc Safetensors\urlnote{https://github.com/huggingface/safetensors}
+\secc Safetensors
 
-\table{|l|l|}{ \crl
-8 bytes & size of header \crl
-N bytes & header \crl
-rest & byte-buffer (little-endian) \crl
+\midinsert \clabel[safetensordef]{SafeTensor format structure}
+\ctable{ll}{
+Size & Content \crl
+8 bytes & size of header \cr
+N bytes & header \cr
+rest & byte-buffer (little-endian)
 }
+\caption/t SafeTensor format structure
+\endinsert
 
-Header: JSON UTF-8 string, each top-level key is a tensor name the value of which contains a dictionary specifying the dtype, shape and data_offsets.
+Header\urlnote{https://github.com/huggingface/safetensors}:
+JSON UTF-8 string, each top-level key is a tensor name the value of which contains a dictionary specifying the dtype, shape and data_offsets.
 
 A schema\urlnote{https://github.com/huggingface/safetensors/blob/main/docs/safetensors.schema.json} is available.
 It allows partial loading
@@ -50,20 +76,76 @@ malicious code may be inserted as well into any model downloaded.
 An example taken from \cite[hamann_exploiting_2020].
 \verbinput \hisyntax{python} (-) pickle_exploit.py
 
-\secc TFLite
+\secc LiteRT (Lite RunTime)
+
+\rfc{formerly TFLite}
+
+\seccc Relation to Tensorflow
+
+Tensorflow is used to train models and facilitate actual ML work.
+LiteRT is stripped down to a lightweight runtime
+for embedded use and can only run models.
+Models also need to be converted (and optimized)
+into the FlatBuffers tflite format before use
+\urlnote{https://ai.google.dev/edge/litert}.
+
+\secc \code{.bmap}
+
+Relates to Yocto project's \code{bmaptool}\urlnote{https://github.com/yoctoproject/bmaptool}.
+\rfc{It's not yocto but forked from intel?}
+
+\secc \code{.spdx}
+
+\secc \code{.wic}
+
+\secc \code{.wks}
 
 
 \chap Analyses
 \sec Backend
 \secc The State of Kernel Support
-
+\rfc{NNAPI is from Android not the Kernel NNAPI of the same name: \ulink[link]{https://developer.android.com/ndk/guides/neuralnetworks/}}
 \secc Manufacturer Modules
 
 \sec Frontend
 \secc Frameworks
 
+\chap NXP IMX
+
+Repo\urlnote{https://bugs.launchpad.net/lxml/+bug/2045435}
+Adding
+\begtt
+CFLAGS += '-fpermissive'
+or more specifically
+CFLAGS += "-Wno-error=incompatible-pointer-types
+\endtt
+to \code{conf/local.conf} fixes it.
+Optionally directly to the bbfiles of the problematic libraries,
+since editing the global \code{local.conf} seems to cause all
+artifacts to go out of date as it affects the entire tree,
+so using the specific files:
+\begitems
+* \code{python3-lxml_5.0.0.bb}
+* \code{expect_5.45.4.bb}
+\enditems
+
+I think, that should only rebuild a subset.
+
+Nope, use a layer.
+
+bitbake -c menuconfig virtual/kernel
+
+
+Nope, just use a Docker container,
+for example \code{gmacario/build-yocto}.
+
+
 \chap NXP eIQ environment
-\sec Engines\urlnote{https://www.nxp.com/docs/en/user-guide/IMX-MACHINE-LEARNING-UG.pdf}
+\chap Engines
+
+\sec \OpenVX~
+
+\urlnote{https://www.nxp.com/docs/en/user-guide/IMX-MACHINE-LEARNING-UG.pdf}
 
 The NXP eIQ stack officially supports the following engines:
 \begitems
@@ -81,13 +163,31 @@ so called as it uses the \OpenVX~ library.
 \enditems
 
 \begitems \style d
-* {Delegate} Kernel Module
-* {VX Delegate} uses the \OpenVX~ library
-* {\OpenVX} Callable API implemented by hardware vendors\cite[noauthor_openvx_2011]
-* {\OpenVX~ library} software interface to \OpenVX
+* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
+* {\OpenVX~ API} Callable API implemented by hardware vendors\cite[noauthor_openvx_2011]
+* {TIM-VX} Verisilicon Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX}
+(used by the VX delegate)
+\enditems
+
+\secc Implementors
+\begitems
+* VeriSilicon/tflite-vx-delegate
+
+  Requires TIM-VX which is linked against the VeriSilicon OpenVX SDK\rfc{Is this proprietary or not}
+
+* KhronosGroup/OpenVX-sample-impl
+
+  Only actually OSS implementation, however it is supposedly very ad-hoc and slowly implemented
+
+* TexasInstruments/tiovx
+
+  Source available but only authorized for use on TI hardware
 \enditems
 
 \rfc{Relation between openvx and opencl}
+
+\sec Apache TVM
+\sec ONNX Runtime
 
 \secc Language Bindings
 
@@ -109,10 +209,15 @@ Since the NPU itself is built for 8/16-bit wide floats \cite[lf_imx_2024].
 
 \chap YOCTO layers
 \urlnote{https://docs.yoctoproject.org/dev/dev-manual/layers.html}
-% https://www.nxp.com/docs/en/user-guide/IMX_YOCTO_PROJECT_USERS_GUIDE.pdf
+
 \chap OpenEmbedded build system
 
 \bibchap
 \usebib/c (iso690) Thesis
+
+\app Glossary
+\glos {NBG}{Network Binary Graph}
+
+\makeglos
 
 \bye

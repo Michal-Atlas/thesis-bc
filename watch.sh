@@ -1,7 +1,5 @@
 #!/bin/sh
 
-while inotifywait thesis.tex; do 
+while inotifywait thesis.tex -e modify; do 
 	optex thesis.tex;
-done &
-
-okular thesis.pdf &
+done
