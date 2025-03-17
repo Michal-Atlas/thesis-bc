@@ -5,15 +5,27 @@
 \title{NPU/AI Accelerator support for PikeOS real-time operating system}
 \author{Michal Žáček}
 \abstractEN{
-	NPUs (Neural Processing Units) and AI are getting quite abundant these days,. It seems the market will soon move towards having an NPU accelerator on many devices, for various purposes.
+	NPU (Neural Processing Unit) accelerators in PCs or notebooks are becoming more and more important these days.  The target platform considered in this thesis is the board TQMa8MPxL\urlnote{
+https://www.tq-group.com/en/products/tq-embedded/arm-architecture/tqma8mpxl
+} but results should apply to any device with the NPU accelerator running under Linux and/or PikeOS.
+Neither the Linux kernel nor PikeOS (real-time embedded OS)
+currently support AI/ML acceleration using NPUs.
+The objective of the thesis is to conduct research of
+open source frameworks with the aim to integrate a reasonably
+good SW support for utilizing this accelerator to enhance the performance of
+machine learning (ML) algorithms on these target platforms.
 
-	Boards (such as the Rockchip 3566, 3588 etc.) have usually proprietary user-space libraries to support various input formats of networks, plus some wrapper kernel driver. There is little to no NPU support in the Linux kernel as of now.
+\begitems \style N
+* Analyze and evaluate implementation of the SW support for utilizing NPU accelerators in representative open-source frameworks.
+* Investigate modules or libraries used in these frameworks for communication with NPU accelerators.
+* Review ML algorithms implemented in these frameworks and select most appropriate frameworks for testing.
+* Design benchmark data sets for testing the ML performance of the selected frameworks on the given Linux platform.
+* Test the performance of selected frameworks on the given Linux platform.
+* Based on these findings, select the most appropriate framework for the integration into the Linux platform and elaborate an integration procedure based  on e.g. Yocto packaging system.
+* Document problems encountered during the integration process.
+* Propose a procedure for the integration of the SW support for the NPU accelerator on the PikeOS platform.
+\enditems
 
-	Evaluate the current status of the most important frameworks currently available in this area: OpenVX, Apache TVM, ONNX Runtime, RTLite, Paddle, NNAPI, etc.  What are the advantages/disadvantages of these frameworks? What are these frameworks compatible with? How do these frameworks communicate with hardware?
-
-	Deploy these frameworks and document problems you encounter.
-
-	Check if there are any NPUs with open-source drivers that could be supported in the PikeOS operating system. Alternatively evaluate the complexity of reverse-engineering such a user-space library (this would be interesting to the OSS community as well). Optionally propose a linux+hwvirt-based solution.
 }
 \abstractCZ{D}
 \declaration{D}
