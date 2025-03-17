@@ -2,15 +2,27 @@
 \worktype[B/EN]
 \faculty{F8}
 \department{Katedra Počítačových Systémů}
-\title{NPU}
+\title{NPU/AI Accelerator support for PikeOS real-time operating system}
 \author{Michal Žáček}
-\abstractEN{D}
+\abstractEN{
+	NPUs (Neural Processing Units) and AI are getting quite abundant these days,. It seems the market will soon move towards having an NPU accelerator on many devices, for various purposes.
+
+	Boards (such as the Rockchip 3566, 3588 etc.) have usually proprietary user-space libraries to support various input formats of networks, plus some wrapper kernel driver. There is little to no NPU support in the Linux kernel as of now.
+
+	Evaluate the current status of the most important frameworks currently available in this area: OpenVX, Apache TVM, ONNX Runtime, RTLite, Paddle, NNAPI, etc.  What are the advantages/disadvantages of these frameworks? What are these frameworks compatible with? How do these frameworks communicate with hardware?
+
+	Deploy these frameworks and document problems you encounter.
+
+	Check if there are any NPUs with open-source drivers that could be supported in the PikeOS operating system. Alternatively evaluate the complexity of reverse-engineering such a user-space library (this would be interesting to the OSS community as well). Optionally propose a linux+hwvirt-based solution.
+}
 \abstractCZ{D}
 \declaration{D}
-\date{2024}
+\date{2025}
 \draft
 
 \def\OpenVX{OpenVX™}
+\def\VeriSilicon{VeriSilicon}
+\def\textemdash{-}
 
 \makefront
 
@@ -32,7 +44,9 @@ valuable tool when working with neural networks.
 Recently even more specialized hardware has become available
 to meet the rising demand in having access to these technologies
 in more portable devices or for use in embedded situations.
-Neural Processing Units\fnote{Historically sometimes called VPUs, V standing for Versatile},
+Neural Processing Units\fnote{Historically also called Versatile/Tensor/Intelligence Processing Units (VPU/TPU/IPU),
+	however for simplicity's sake we will only use the term NPU and only deviate if a specific
+	function or product uses one of the alternatives},
 are becoming more common,
 however these don't often come with universal drivers
 and the most widespread standard today has no freely adoptable implementation.
@@ -45,18 +59,63 @@ We will then go through the advantages that this hardware should in theory provi
 These will be packaged into demonstration packages than may be run to show off and/or verify these results.
 Finally, we discuss what this means for PikeOS integration of NPU support.
 
-\sec NPUs
-\sec Delegates
-\sec File Formats
+\sec NPUs (Neural Processing Units)
 
-\secc Safetensors
+Neural Processing Units (further shortened to NPU) are in general a type of hardware accelerator which is
+optimized to efficiently handle Machine Learning workloads.
+Our NPU in question is composed of a frontend that is used for
+communication between the NPU and the rest of the board,
+a parallel processing unit,
+a neural network engine
+along with a backing storage.
+The device works with 4-element vectors of 16/32-bit IEEE floating-point or 8/16/32-bit integers either signed or unsigned.
+The device implements the \OpenVX~hardware API
+along with some extension and
+\VeriSilicon~provides an official open-source library through which to call this API,
+called the
+Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX?tab=readme-ov-file}
+(further shortened to TIM-VX) contains C++ bindings,
+and Ovxlib contains C bindings\rfc{Does this get called by TIM-VX, does it use SDKs?}.
+TIM-XV calls into one of two SDKs, the \VeriSilicon~Unified \OpenVX~SDK\rfc{TODO}
+supporting both compiling and running using either the GPU and NPU units,
+and the\rfc{proprietary?} VIP-Lite SDK that only contains the runtime for the NPU.
+TIM-VX is used as the target for third-party frameworks targetting the board's NPU.
+
+The device also contains internal facilities for profiling purposes.\rfc{TODO}
+
+\rfc{Include image from https://raw.githubusercontent.com/VeriSilicon/TIM-VX/8494275d7608942aa584c9c13bd5e2d77be9906c/docs/image/timvx_overview.svg}
+
+\chap File Formats
+
+\sec Model File Properties
+\secc Model conversion
+eIQ toolkit
+In the converted model,
+the neutronGraph node is already generated. The neutron-delegate only captures the neutronGraph node and
+offloads the work to Neutron-S. Inline compilation is not supported yet. [page 6]
+
+Apparently there are ways to compile a model for a specific NPU,
+even multiple models so they efficiently live together
+in memory.
+\urlnote{https://coral.ai/docs/edgetpu/compiler/}
+
+TensorFlow is used in preparation and then compiled to a lighter LiteRT format.
+\urlnote{https://ai.google.dev/edge/litert/models/convert}
+
+\secc Quantization
+\rfc{a.k.a. using narrower floats than the model was built with}
+Since the NPU itself is built for
+8/16-bit wide floats \cite[IMxMachineLeLfRe2024].
+
+\sec Keras
+\sec Safetensors
 
 \midinsert \clabel[safetensordef]{SafeTensor format structure}
 \ctable{ll}{
-Size & Content \crl
-8 bytes & size of header \cr
-N bytes & header \cr
-rest & byte-buffer (little-endian)
+	Size & Content \crl
+	8 bytes & size of header \cr
+	N bytes & header \cr
+	rest & byte-buffer (little-endian)
 }
 \caption/t SafeTensor format structure
 \endinsert
@@ -67,50 +126,256 @@ JSON UTF-8 string, each top-level key is a tensor name the value of which contai
 A schema\urlnote{https://github.com/huggingface/safetensors/blob/main/docs/safetensors.schema.json} is available.
 It allows partial loading
 
-\secc Pickle
+\sec Pickle
 
-{\bf\Red This is dangerous to use.}
+	{\bf\Red This is dangerous to use.}
 Since pickling allows arbitrary instances of classes,
 malicious code may be inserted as well into any model downloaded.
 
-An example taken from \cite[hamann_exploiting_2020].
+An example taken from \cite[ExploitingPythHamann2020].
 \verbinput \hisyntax{python} (-) pickle_exploit.py
 
-\secc LiteRT (Lite RunTime)
-
-\rfc{formerly TFLite}
-
-\seccc Relation to Tensorflow
-
-Tensorflow is used to train models and facilitate actual ML work.
-LiteRT is stripped down to a lightweight runtime
-for embedded use and can only run models.
-Models also need to be converted (and optimized)
-into the FlatBuffers tflite format before use
-\urlnote{https://ai.google.dev/edge/litert}.
-
-\secc \code{.bmap}
+\sec Block map \code{.bmap}
 
 Relates to Yocto project's \code{bmaptool}\urlnote{https://github.com/yoctoproject/bmaptool}.
 \rfc{It's not yocto but forked from intel?}
 
-\secc \code{.spdx}
+\sec System Package Data Exchange \code{.spdx}
 
-\secc \code{.wic}
+A Bill of Materials of all the included
+packages used to build an image including all the versions
+and metadata.
+\urlnote{https://en.wikipedia.org/wiki/Software_Package_Data_Exchange}
 
-\secc \code{.wks}
+\sec OpenEmbedded Image Creator \code{.wic}
+
+Should your device require
+multiple partitions.\urlnote{https://docs.yoctoproject.org/dev/dev-manual/wic.html}
+Use if \code{bmap} isn't supported as it doesn't support
+sparsness, etc.\urlnote{citation needed}
+
+\secc OpenEmbedded kickstart file \code{.wks}
+
+Contains build commands for the \code{wic} command.
+\urlnote{https://docs.yoctoproject.org/dev/dev-manual/wic.html}
+
+\secc Flattened Device Tree \code{.fdt} / Device Tree Source \code{.dts???}
+
+\code{.dts} describes hardware.\urlnote{https://wiki.freebsd.org/FlattenedDeviceTree\#Device\_tree\_source\_.28DTS.29}
+Afterwards compiled into \code{.dtb}.
+
+\chap The Graph Workflow
+
+\sec Python Subclasses modelling Tensor functions
+
+Most frameworks analyzed use Python,
+and all seem to use a similar form of abstraction.
+They declare some class, in the case of PyTorch
+this would be \code{torch.nn.Module}\cite[ModulePytorc],
+and a Model is defined by a class that inherits
+from this root,
+and overrides one or more specific methods.
+
+For efficiency's sake these functions may
+later be compiled into other forms
+especially when serialized into the for of any model file.
+
+\secc \code{__init__}
+
+\secc \code{forward} (mandatory)
+
+This is the crux of the pipeline,
+it defines the actual operations performed on
+the inputs and returns what the Graph node would have
+as outputs.
+\rfc{How are many inputs/outputs handled?}
+
+\secc Movement functions
+
+Methods such as \code{.to()}/\code{.cpu()}/\code{.ipu()},
+cause our model to be run on the given target device.
+However, this also hints to the given framework
+what the target is which is also taken into account
+in cases of optimization.
+
+\sec Compiling down to hardware
+\rfc{PyTorch at least seems to use something called Triton}
+
+It seems that these frameworks really do
+compile large parts of the python language
+into one of many target IRs.
+
+\begtt\hisyntax{python}
+def foo(x):
+  a = [2] + [ 3 for _ in range(2) ]
+  return x * a[0] + 1
+\endtt
+
+\begtt
+print(torch.jit.script(foo).code)
+
+def foo(x: Tensor) -> Tensor:
+  _0 = [2]
+  _1 = annotate(List[int], [])
+  for _2 in range(2):
+    _3 = torch.append(_1, 3)
+  a = torch.add(_0, _1)
+  return torch.add(torch.mul(x, a[0]), 1)
+\endtt
+
+\begtt
+print(torch.fx.symbolic_trace(foo).graph)
+
+graph():
+  %x : [num_users=1] = placeholder[target=x]
+  %mul : [num_users=1] = call_function[target=operator.mul](args = (%x, 2), kwargs = {})
+  %add : [num_users=1] = call_function[target=operator.add](args = (%mul, 1), kwargs = {})
+  return add
+\endtt
+
+\begtt
+print(torch.export.export(Foo(), (2,)).graph)
+
+graph():
+  %x : [num_users=0] = placeholder[target=x]
+  return (5,)
+\endtt
+\rfc{Reference Manual 13.16 for NPU}
+
+\chap Hardware Specifics
+\sec Power Modes
+\sec Loading into Memory
+
+\chap Frameworks
+\sec Kernel Support
+\rfc{NNAPI is from Android not the Kernel NNAPI of the same name: \urlnote{https://developer.android.com/ndk/guides/neuralnetworks/}}
+\sec LiteRT (Lite RunTime)
+
+\rfc{formerly TFLite}
+
+Models also need to be converted (and optimized)
+into the FlatBuffers tflite format before use
+\urlnote{https://ai.google.dev/edge/litert}.
+
+\begtt\hisyntax{python}
+# set USE_GPU_INFERENCE=0
+import tflite_runtime.interpreter as tflite
+
+# load external delegate
+ext_delegate = [
+tflite.load_delegate("/usr/lib/libvx_delegate.so", "")
+]
+
+interpreter = tflite.Interpreter(
+model_path=args.model_file,
+experimental_delegates=ext_delegate,
+num_threads=args.num_threads)
+
+runner(x=np.array(range(10), dtype=np.float32))
+\endtt
+\sec Tensor Virtual Machine (TVM)
+\nocite[ExtendingTensoWang2022]
+As the full name Apache TVM might suggest,
+this is an open-source framework built by Apache,
+to .
+
+According to \code{EXTRA_OECMAKE} and the fact that it links against tim-vx
+in the tvm bitbake recipe,
+support for VSINPU should already be built in.
+\rfc{Use as ONNX backend?}
+
+\sec ONNX (Open Neural Network Exchange)
+
+Though originally authored by joint efforts of Facebook and Microsoft,
+\rfc{Source is wiki, find a better source: https://en.wikipedia.org/wiki/Open_Neural_Network_Exchange}
+this project has flourished into a widely supported open-source ecosystem.
+A comprehensive specification for models, formats, types, operators and
+abstract data descriptions.
+It includes protobuf definitions of their \code{.onnx} model files.
+It used to support only inference,
+but training was added with ONNX IR spec version 7\cite[OpenNeuralNet].
+Models here are represented as either just a stateless
+inference function in the case of inference-only models,
+or may be extended with an initialization and a training
+method which may modify the state of internal stateful variables
+of the given model.
+ONNX also encodes block of operators that encode a more complex task,
+these may be substituted for builtins by the runtime based off of their name.\rfc{Was changed in IRv9}
+The internal structure is a list of acyclically dependent topologically sorted nodes,
+each node providing name, metadata, i/o and the given operation performed.
+ONNX however does provide HOF-like operators that are applied
+to entire subgraphs,
+thus substituting the need for self-references\cite[OnnxConcepts].
+These nodes are strung together as a pipeline each input being connected
+to a previously declared output of the same name.
+Each output name is unique since SSA is mandatory,
+verification tools for this and other properties are
+available from the creators of ONNX\rfc{SHOW}.
+The last argument of some operators is marked as variadic,
+thus allowing as is traditional with
+regular languages to pass an arbitrary number of
+inputs/outputs to it,
+obviously respecting the minimum arity.
+\rfc{ONNX vs. ONNX-ML}
+These graphs are meant to be assembled programatically,
+however ONNX does provide a textual form of their files.
 
 
-\chap Analyses
-\sec Backend
-\secc The State of Kernel Support
-\rfc{NNAPI is from Android not the Kernel NNAPI of the same name: \ulink[link]{https://developer.android.com/ndk/guides/neuralnetworks/}}
-\secc Manufacturer Modules
+\secc NPU backend
 
-\sec Frontend
-\secc Frameworks
+Implementing a backend for ONNX is
+done by providing a Python wrapping the functionality.
 
-\chap NXP IMX
+After downloading onnxruntime from pip,
+I can use the available provider
+CPU and Azure.
+VSINPU is listed as known but unavailable.
+Activating it yields an error rather than
+a warning for Provider unsupported.
+
+\secc Running on NPU
+
+\begtt\hisyntax{python}
+import onnxruntime
+session = onnxruntime.InferenceSession("model.onnx", providers = [ "VSINPUExecutionProvider" ])
+session.run(input_feed={"x": np.full(fill_value=[1.0], shape=(1,28,28), dtype=np.float32)}, output_names = ["add"])
+outputs = session.run(None, {"input": inputTensor})
+\endtt
+
+NPU provider is added here\urlnote{https://github.com/microsoft/onnxruntime/blob/daf9565d1b550fd0d8149e8314bfce61d8df1d54/onnxruntime/core/providers/get_execution_providers.cc} line 89,
+listed by \code{onnxruntime.get_available_providers},
+yet then discarded when calling \urlnote{https://github.com/microsoft/onnxruntime/blob/daf9565d1b550fd0d8149e8314bfce61d8df1d54/onnxruntime/python/onnxruntime_pybind_state.cc} line 1238,
+in favour of the \code{EP Unknown Provider falling back to CPU} error.
+\rfc{I'd swear I had this working.}
+
+\secc Tooling
+
+\rfc{netron, zetane, tensor2onnx and such}
+
+\secc Converting torch models into ONNX
+\rfc{What exactly is "model" here?}
+\begtt\hisyntax{python}
+torch.onnx.export(
+model,                                # model being run
+torch.randn(1, 28, 28),    # model input (or a tuple for multiple inputs)
+"fashion_mnist_model.onnx",           # where to save the model (can be a file or file-like object)
+input_names = ['input'],              # the model's input names
+output_names = ['output'])            # the model's output names
+\endtt
+
+\sec The NXP eIQ environment
+
+The NXP eIQ stack officially supports the following engines:
+\begitems
+* LiteRT (formerly known as TensorFlow Lite)
+* ONNX Runtime
+* PyTorch
+* OpenCV
+\enditems
+Of these only TensorFlow Lite supports the included NPU through the use of the VX delegate,
+so called as it uses the \OpenVX~ library.
+
+\chap Building the NXP IMX layer
 
 Repo\urlnote{https://bugs.launchpad.net/lxml/+bug/2045435}
 Adding
@@ -138,24 +403,21 @@ bitbake -c menuconfig virtual/kernel
 
 Nope, just use a Docker container,
 for example \code{gmacario/build-yocto}.
+\begtt
+apt install lz4 zstd
+\endtt
+\rfc{Files created under \code{build/tmp/work/imx8mpevk-poky-linux/imx-image-full/1.0/deploy-imx-image-full-image-complete}}
+
+Using for second build
+\code{docker run --rm -it -v /DISKB/cl-local/scarthgap.TQ.ARM.BSP.0001:/src --userns=keep-id 97bf1c8e3645}
 
 
-\chap NXP eIQ environment
-\chap Engines
+\chap \OpenVX~
 
-\sec \OpenVX~
+\VeriSilicon~ships their pre-compiled
+shared library \code{libOpenVX.so} with TIM-VX.
 
 \urlnote{https://www.nxp.com/docs/en/user-guide/IMX-MACHINE-LEARNING-UG.pdf}
-
-The NXP eIQ stack officially supports the following engines:
-\begitems
-* LiteRT (formerly known as TensorFlow Lite)
-* ONNX Runtime
-* PyTorch
-* OpenCV
-\enditems
-Of these only TensorFlow Lite supports the included NPU through the use of the VX delegate,
-so called as it uses the \OpenVX~ library.
 
 \begitems
 * APIs for Python and C++
@@ -163,61 +425,179 @@ so called as it uses the \OpenVX~ library.
 \enditems
 
 \begitems \style d
-* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
-* {\OpenVX~ API} Callable API implemented by hardware vendors\cite[noauthor_openvx_2011]
+	* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
+* {\OpenVX~ API} Callable API implemented by hardware vendors\cite[OpenvxPortab2011]
 * {TIM-VX} Verisilicon Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX}
 (used by the VX delegate)
 \enditems
 
-\secc Implementors
+\sec Implementors
 \begitems
 * VeriSilicon/tflite-vx-delegate
 
-  Requires TIM-VX which is linked against the VeriSilicon OpenVX SDK\rfc{Is this proprietary or not}
+Requires TIM-VX which is linked against the \VeriSilicon~\OpenVX~SDK\rfc{Is this proprietary or not}
 
 * KhronosGroup/OpenVX-sample-impl
 
-  Only actually OSS implementation, however it is supposedly very ad-hoc and slowly implemented
+Only actually OSS implementation, however it is supposedly very ad-hoc and slowly implemented
 
 * TexasInstruments/tiovx
 
-  Source available but only authorized for use on TI hardware
+Source available but only authorized for use on TI hardware
 \enditems
 
 \rfc{Relation between openvx and opencl}
 
-\sec Apache TVM
-\sec ONNX Runtime
-
-\secc Language Bindings
-
 \chap Speedup
 \sec Theoretical advantages
 \sec Benchmarking Practical Results
-\sec Model conversion
-eIQ toolkit
-In the converted model,
-the neutronGraph node is already generated. The neutron-delegate only captures the neutronGraph node and
-offloads the work to Neutron-S. Inline compilation is not supported yet. [page 6]
+\sec Device Tensors
+.\urlnote{https://onnxruntime.ai/docs/performance/device-tensor.html}
+
 \sec Startup slowdowns
-\sec Quantization
-\rfc{a.k.a. using narrower floats than the model was built with}
-Since the NPU itself is built for 8/16-bit wide floats \cite[lf_imx_2024].
 
 \chap Demonstrations
 \chap Suggesting PikeOS integration
 
-\chap YOCTO layers
-\urlnote{https://docs.yoctoproject.org/dev/dev-manual/layers.html}
+\app Glossary
+\glos {NBG}{Network Binary Graph}
+\glos {VsiNPU}{\VeriSilicon~NPU}
+\glos {SSA}{Single Static Assignment}
+\glos {Tensor}{Sufficiently described for purposes of this text as multidimensional arrays}
+\glos {IR}{Intermediate Representation}
 
-\chap OpenEmbedded build system
+\makeglos
 
 \bibchap
 \usebib/c (iso690) Thesis
 
-\app Glossary
-\glos {NBG}{Network Binary Graph}
+\app Attempts and scratchpad
 
-\makeglos
+\sec sudo bmaptool copy ~/cl-local/images/imx8mpevk/imx-image-full-imx8mpevk.rootfs.wic.zst /dev/mmcblk0
+
+Did not connect at all
+
+\sec sudo dd if=sdimagenxpi8mp.img.bkp of=/dev/mmcblk0 status=progress
+
+Works, but doesn't boot `run mmcboot` provides a kernel error.
+
+One of the three buttons is reset.
+Left one, closest to V59 mark.
+
+=> run mmcboot
+
+
+bootd     - boot default, i.e., run 'bootcmd'
+bootefi   - Boots an EFI payload from memory
+bootelf   - Boot from an ELF image in memory
+booti     - boot Linux kernel 'Image' format from memory
+bootm     - boot application image from memory
+bootp     - boot image via network using BOOTP/TFTP protocol
+bootvx    - Boot vxWorks from an ELF image
+
+Run sudo uuu -v -b sd uuu.auto-imx8mpevk
+while switches in 0b0001 and pressing Reset.
+
+sudo uuu -b emmc_all ./images/imx-boot-tqma8mpxl-mba8mpxl-mfgtool.bin-flash_spl_uboot ./images/tq-image-weston-debug-tqma8mpxl-mba8mpxl.rootfs.wic
+
+Overlay
+Must update some layers from BSP to NXP-IMX manifest version.
+meta-freescale due to...
+poky due to gstreamer version mismatch, meta-imx requires >=1.24.0,
+but the bsp provided 1.22.5..
+
+Actually working command:
+\code{sudo uuu -v -b emmc_all ./images/imx-boot-tqma8mpxl-mba8mpxl-mfgtool.bin-flash_spl_uboot ./images/imx-image-full-tqma8mpxl-mba8mpxl.rootfs.wic}
+
+Don't forget to actually start booting i.e. select memory size, etc.
+
+\rfc{The NPU can send CPU interrupts, these are set using the driver and cannot in fact be understood without the driver since the NPU and driver both assign arbitrary meaning to the given bits of the interrupt info register.}
+
+Root of all property \code{./meta-freescale/recipes-graphics/imx-gpu-viv/imx-gpu-viv-6.inc}
+
+\sec OPENCV Compilation
+
+Compiling with external TIM-VX lib,
+which is strongly advised against,
+yields a segfaulting library.
+
+\begtt\hisyntax{python}
+>>> cv.setUseOpenVX(True)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/core/src/ovx.cpp:101: error: (-215:Assertion failed) !flag && "OpenVX support isn't enabled at compile time" in function 'setUseOpenVX'
+
+>>> cv.useOpenVX()
+False
+
+self._model = cv.FaceDetectorYN.create(
+            model=self._modelPath,
+            config="",
+            input_size=self._inputSize,
+            score_threshold=self._confThreshold,
+            nms_threshold=self._nmsThreshold,
+            top_k=self._topK,
+            backend_id=self._backendId,
+            target_id=self._targetId)
+	    # Segfaulted
+\endtt
+.\urlnote{https://github.com/opencv/opencv/wiki/TIM-VX-Backend-For-Running-OpenCV-On-NPU}
+
+Now trying to compile TIM-VX directly in OpenCV,
+
+\begtt
+libgfortran was skipped: libgfortran needs fortran support to be enabled in the compiler
+external-arm-toolchain PROVIDES libgfortran but was skipped: External ARM toolchain not configured (EAT_VER_MAIN not set).
+\endtt
+
+Apparently I need an external ARM toolchain such as Linaro.
+
+\rfc{Does the TIM-VX driver even actually use the NPU?
+It is universal after all.
+With ONNX it is VSINPU so we can be quite sure,
+LiteRT as well cause that is official,
+OpenCV sets the target as NPU.}
+
+\code{Build Configuration:
+BB_VERSION           = "2.8.0"
+BUILD_SYS            = "x86_64-linux"
+NATIVELSBSTRING      = "universal"
+TARGET_SYS           = "aarch64-poky-linux"
+MACHINE              = "tqma8mpxl-mba8mpxl"
+DISTRO               = "fsl-imx-wayland"
+DISTRO_VERSION       = "6.6-scarthgap"
+TUNE_FEATURES        = "aarch64 armv8a crc crypto"
+TARGET_FPU           = ""
+meta
+meta-poky            = "HEAD:200d12b6a58ad961d60a7774ca0f7a9d29498724"
+meta-oe
+meta-python
+meta-multimedia      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
+meta-freescale       = "HEAD:0627128b341cfb2bef7a0832ce8cac0ce1127f13"
+meta-qt6             = "HEAD:586a6cb5aec755803a3be3cec359baafe89d6432"
+meta-tq              = "HEAD:257b8c0b4b6df3bb27fb69bd2312dd254c73fed3"
+meta-imx-ml
+meta-imx-sdk
+meta-imx-bsp         = "HEAD:219f6d04a4c339eb6f2dc626f944bbdf9a716ff5"
+meta-arm
+meta-arm-toolchain   = "HEAD:950a4afce46a359def2958bd9ae33fc08ff9bb0d"
+meta-freescale-distro = "HEAD:b9d6a5d9931922558046d230c1f5f4ef6ee72345"
+meta-overlay         = "<unknown>:<unknown>"
+meta-virtualization  = "HEAD:6f3c1d8f90947408a6587be222fec575a1ca5195"
+meta-filesystems
+meta-networking      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
+meta-tpm
+meta-parsec          = "HEAD:459d837338ca230254baa2994f870bf6eb9d0139"
+meta-clang           = "HEAD:2b7433611d80f6d0ee1b04156fa91fc73d3c2665"
+}
+
+As of writing the main 1.21.0 version of ONNXRuntime
+is the first to support VSINPU, however
+the release version has broke support for
+targets with no fp16 support,
+therefore a pr's commit with the fix needs to be used.
+Issue: 23957
+PR: 23978
+As of writing it is very fast on track to be merged into main.
 
 \bye

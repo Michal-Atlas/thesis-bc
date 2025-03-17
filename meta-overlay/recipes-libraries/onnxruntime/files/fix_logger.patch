@@ -1,0 +1,24 @@
+diff --git a/onnxruntime/core/providers/vsinpu/vsinpu_execution_provider.cc b/onnxruntime/core/providers/vsinpu/vsinpu_execution_provider.cc
+index 4b9f6fae8..ac2416964 100644
+--- a/onnxruntime/core/providers/vsinpu/vsinpu_execution_provider.cc
++++ b/onnxruntime/core/providers/vsinpu/vsinpu_execution_provider.cc
+@@ -64,6 +64,7 @@ VSINPUExecutionProvider::GetCapability(const onnxruntime::GraphViewer& graph_vie
+                                        const IKernelLookup& /*kernel_lookup*/,
+                                        IResourceAccountant* /* resource_accountant */) const {
+   std::vector<std::unique_ptr<ComputeCapability>> result;
++  const auto& logger = *GetLogger();
+ 
+   if (graph_viewer.IsSubgraph()) {
+     return result;
+diff --git a/setup.py b/setup.py
+index ced2f28e3..722757f30 100644
+--- a/setup.py
++++ b/setup.py
+@@ -756,7 +756,6 @@ def save_build_and_package_info(package_name, version_number, cuda_version, rocm
+             f.write(f"rocm_version = '{rocm_version}'\n")
+ 
+ 
+-save_build_and_package_info(package_name, version_number, cuda_version, rocm_version)
+ 
+ extras_require = {}
+ if package_name == "onnxruntime-gpu" and is_cuda_version_12:
