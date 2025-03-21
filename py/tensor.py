@@ -12,7 +12,7 @@ class TestModel(nn.Module):
     Simple method that accepts single input 'x' and returns 'x' + 4.
     '''
     # Name the output 'result' for convenience.
-    return {'result' : x + 4}
+    return {'result' : x + 21}
 
 SAVED_MODEL_PATH = 'content/saved_models/test_variable'
 TFLITE_FILE_PATH = 'content/test_variable.tflite'

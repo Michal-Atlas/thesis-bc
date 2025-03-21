@@ -375,6 +375,39 @@ input_names = ['input'],              # the model's input names
 output_names = ['output'])            # the model's output names
 \endtt
 
+\sec OpenCV
+
+\begtt\hisyntax{python}
+import cv2 as cv
+m = cv.dnn.readNet('model.onnx')
+m.setPreferable
+m.setPreferableBackend(cv.dnn.DNN_BACKEND_TIMVX)
+m.setPreferableTarget(cv.dnn.DNN_TARGET_NPU)
+import numpy as np
+m.setInput(np.full(fill_value=[1.0], shape=(1,28,28)))
+m.forward(["output"])
+\endtt
+
+Yields:
+\begtt
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/net_impl.cpp:279: error: (-204:Requested object was not found) Layer with requested id=-1 not found in function 'getLayerData'
+\endtt
+Which is the error for wrong output name.
+
+\code{m.forward([])} and \code{m.forward()}
+seem to both yield the same array,
+seems that if no outputs are specified,
+then implicitly it takes the one, \rfc{but which}.
+
+\begtt
+>>> m.getInputDetails()
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/net_quantization.cpp:268: error: (-6:Unknown error code -6) Net isn't quantized in function 'getInputDetails'
+\endtt
+
 \sec The NXP eIQ environment
 
 The NXP eIQ stack officially supports the following engines:

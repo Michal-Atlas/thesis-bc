@@ -68,7 +68,7 @@
               allowSubstitutes = false;
               buildPhase = ''
                 export HOME=$PWD
-                cp $src/* .
+                cp -r $src/* .
                 while ${self'.packages.tex}/bin/optex thesis.tex | tee /dev/stderr | grep -Eq 'again|rerun'; do :; done
               '';
               installPhase = ''
@@ -87,6 +87,7 @@
               nativeBuildInputs = with pkgs; [ git ];
               dependencies = with pkgs.python311Packages; [
                 # keep-sorted start
+                torch
                 numpy
                 onnx
                 typing-extensions
