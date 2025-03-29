@@ -90,6 +90,7 @@
                 torch
                 numpy
                 onnx
+                onnxruntime
                 typing-extensions
                 ml-dtypes
                 # keep-sorted end

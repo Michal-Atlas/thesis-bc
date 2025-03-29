@@ -1,0 +1,15 @@
+venv/
+*.onnx
+*.raw
+*.tflite
+.direnv/
+.idea/
+sources
+images
+nxp-imx/
+*.zip
+*.md
+*.pdf
+*.log
+*.ref
+*.img
