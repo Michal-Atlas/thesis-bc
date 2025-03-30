@@ -3,7 +3,7 @@ from cProfile import Profile
 from contextlib import contextmanager
 from pstats import SortKey, Stats
 import signal
-from test_rig.run import tf, onnx, cv, tvm
+from test_rig.run import tf, onnx, cv, tvm_run
 
 os.environ["USE_GPU_INFERENCE"] = "0"
 
@@ -47,7 +47,7 @@ def run_profiled(module):
 
 
 if __name__ == "__main__":
-    for m in [onnx, cv, tvm]:
+    for m in [onnx, cv, tvm_run]:
         print("Testing {}\n\n".format(m))
         run_profiled(m)
     # tf.run()

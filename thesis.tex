@@ -654,4 +654,19 @@ Even with smaller ones afterwards, perhaps the pipeline is clogged?
 LiteRT seems to freeze at about 20000x2000 or so.
 Cannot operate until restart
 
+\begtt
+2025-03-30 23:14:39.310737248 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) aten_pixel_shuffle  to cpu.
+2025-03-30 23:14:39.313027340 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) Shape  to cpu.
+2025-03-30 23:14:39.313115214 [W:onnxruntime:Default, base_op_builder.cc:138 HasSupportedInputOutputsImpl] Concat has unsupported input type : tensor(int64)
+2025-03-30 23:14:39.313155463 [W:onnxruntime:Default, base_op_builder.cc:105 HasSupportedInputOutputs] Dynamic shape is not supported for now, for output:_inlfunc_aten_pixel_shuffle_reshaped_self
+2025-03-30 23:14:39.313187213 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) DepthToSpace  to cpu.
+2025-03-30 23:14:39.313213337 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) Shape  to cpu.
+2025-03-30 23:14:39.313256337 [W:onnxruntime:Default, base_op_builder.cc:138 HasSupportedInputOutputsImpl] Concat has unsupported input type : tensor(int64)
+2025-03-30 23:14:39.313292836 [W:onnxruntime:Default, base_op_builder.cc:56 operator()] Dynamic shape is not supported for now, for input:_inlfunc_aten_pixel_shuffle_depth_to_space
+2025-03-30 23:14:39.324987167 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) DepthToSpace  to cpu.
+2025-03-30 23:14:39.325322787 [W:onnxruntime:Default, vsinpu_execution_provider.cc:170 GetCapability] VSINPUExecutionProvider::GetCapability, number of partitions supported by VSINPU: 2; number of nodes in the graph: 10; number of nodes supported by VSINPU: 9
+\endtt
+.\rfc{Gather information on specifics of supported ops and sizes before proceeding}
+.\rfc{In another instance RAM can overflow if the network is too large, however it must be exceedingly so.}
+
 \bye
