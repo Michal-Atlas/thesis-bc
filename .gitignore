@@ -13,3 +13,5 @@ nxp-imx/
 *.log
 *.ref
 *.img
+result
+__pycache__/

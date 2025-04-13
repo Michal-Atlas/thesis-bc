@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from test_rig.config import SAVED_MODEL_PATH, TFLITE_FILE_PATH, INPUT_SHAPE
+from test_rig.config import SAVED_MODEL_PATH, TFLITE_FILE_PATH, INPUT_SHAPE, INPUT_TYPE_NP
 
 
 class TFModule(tf.Module):
@@ -8,7 +8,7 @@ class TFModule(tf.Module):
         super().__init__()
 
 
-    @tf.function(input_signature=[tf.TensorSpec(shape=INPUT_SHAPE, dtype=tf.float32)])
+    @tf.function(input_signature=[tf.TensorSpec(shape=INPUT_SHAPE, dtype=INPUT_TYPE_NP)])
     def add(self, x):
         return {"result": x + 4}
 

@@ -1,5 +1,5 @@
-import torch.nn as nn
 import torch
+import torch.nn as nn
 import torch.nn.init as init
 
 from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE
@@ -32,27 +32,53 @@ class SuperResolutionNet(nn.Module):
         init.orthogonal_(self.conv3.weight, init.calculate_gain('relu'))
         init.orthogonal_(self.conv4.weight)
 
+def separate_custom_func(x):
+    return x * 2
 
 class OnnxModule(nn.Module):
-    def __init__(self):
+    def __init__(self,
+                 in_channels=INPUT_SHAPE[0],
+                 out_channels=INPUT_SHAPE[0],
+                 kernel_size=3,
+                 ):
         super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size)
+        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size)
+        self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size)
+        self.conv4 = nn.Conv2d(in_channels, out_channels, kernel_size)
 
-    def forward(self, x):
+        # self.relu = [ nn.ReLU(inplace=True) for _ in range(128) ]
+        # self.cosa = nn.CosineSimilarity()
+        # self.bcel = nn.BCELoss()
 
-        return x
+    def forward(self, input):
+        x = self.conv1(input)
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        return {"output": x}
 
 def save():
-    # model = OnnxModule()
-    model = SuperResolutionNet(upscale_factor=3)
+    model = OnnxModule()
+    # model = SuperResolutionNet(upscale_factor=3)
+    # model = nn.CosineSimilarity()
 
     onnx_program = torch.onnx.export(
         model,
-        (torch.randn(*INPUT_SHAPE),),
+        (torch.rand(INPUT_SHAPE),
+       #  torch.rand(INPUT_SHAPE)
+         ),
+        # Must be torch array
+        # (
+        #     torch.rand(INPUT_SHAPE, dtype=INPUT_TYPE_PT),
+        #  torch.rand(INPUT_SHAPE, dtype=INPUT_TYPE_PT),
+        # ),
+        # (torch.randint(0,255,INPUT_SHAPE,dtype=torch.int16),),
         dynamo=True,
         report=True,
 
         optimize=True,
-        verify=True,
+        # verify=True,
     )
 
     onnx_program.save(ONNX_MODEL_PATH)
