@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE
+from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, MODEL_LENGTH
+
 
 # https://pytorch.org/tutorials/advanced/super_resolution_with_onnxruntime.html
 
@@ -32,31 +33,30 @@ class SuperResolutionNet(nn.Module):
         init.orthogonal_(self.conv3.weight, init.calculate_gain('relu'))
         init.orthogonal_(self.conv4.weight)
 
+
 def separate_custom_func(x):
     return x * 2
 
+
 class OnnxModule(nn.Module):
     def __init__(self,
-                 in_channels=INPUT_SHAPE[0],
-                 out_channels=INPUT_SHAPE[0],
-                 kernel_size=3,
+                 in_channels=INPUT_SHAPE[1],
+                 out_channels=INPUT_SHAPE[1],
+                 kernel_size=1,
                  ):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size)
-        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size)
-        self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size)
-        self.conv4 = nn.Conv2d(in_channels, out_channels, kernel_size)
+        for i in range(MODEL_LENGTH):
+            self.__setattr__(f"conv{i}", nn.Conv2d(
+                in_channels,
+                out_channels,
+                kernel_size,
+            ))
 
-        # self.relu = [ nn.ReLU(inplace=True) for _ in range(128) ]
-        # self.cosa = nn.CosineSimilarity()
-        # self.bcel = nn.BCELoss()
-
-    def forward(self, input):
-        x = self.conv1(input)
-        x = self.conv2(x)
-        x = self.conv3(x)
-        x = self.conv4(x)
+    def forward(self, x):
+        for i in range(MODEL_LENGTH):
+            x = self.__getattr__(f"conv{i}")(x)
         return {"output": x}
+
 
 def save():
     model = OnnxModule()
@@ -66,7 +66,7 @@ def save():
     onnx_program = torch.onnx.export(
         model,
         (torch.rand(INPUT_SHAPE),
-       #  torch.rand(INPUT_SHAPE)
+         #  torch.rand(INPUT_SHAPE)
          ),
         # Must be torch array
         # (
@@ -75,7 +75,7 @@ def save():
         # ),
         # (torch.randint(0,255,INPUT_SHAPE,dtype=torch.int16),),
         dynamo=True,
-        report=True,
+        # report=True,
 
         optimize=True,
         # verify=True,

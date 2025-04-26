@@ -317,6 +317,7 @@ when importing the module without hindering further use.
 \sec TIM-VX
 
 This was simply needed to be updated to version 1.2.22.
+\rfc{Specify the role of TIM-VX}
 
 \sec OpenCV
 
@@ -334,7 +335,7 @@ EXTRA_OECMAKE:append = "\
 "
 
 DEPENDS:append = " tim-vx"
-RDEPENDS:append = " tim-vx"
+RDEPENDS:${PN}:append = " tim-vx"
 \endtt
 
 \sec TVM
@@ -357,7 +358,7 @@ and a Model is defined by a class that inherits
 from this root,
 and overrides one or more specific methods.
 
-For efficiency's sake these functions may
+For efficiency's and compatibility's sake these functions may
 later be compiled into other forms
 especially when serialized into the form of any model file.
 
@@ -516,8 +517,74 @@ graph():
 \rfc{Reference Manual 13.16 for NPU}
 
 \chap Hardware Specifics
+
+\sec NPU Contents
+
+\cite[IMx8mPlusAp]
+
+\secc Parallel Processing Unit (PPU)
+
+SIMD4, with 4 units with 256 threads each.
+
+\secc Neural Network Engine
+
+Does 1152 MAC operations per clock cycle.
+
+\glos {MAC}{Multiply–accumulate operation $a \leftarrow a + (b \times c)$}
+
+\secc Tensor Processor
+
+Supported operations are
+
+\ctable{cl}{
+Pooling & Max, average \cr
+Unpooling & Yes \cr
+Activation & ReLU, Leaky ReLU (LUT for other types) \cr
+Normalization & Yes \cr
+Region Proposal Support & Yes \cr
+}
+
+\secc OpenVX Hardware Support?
+
+
+\sec Configuration Environment Variables read by TIM-VX
+.\rfc{cite Machine Learning Guide[6.1.2]}
+
+\begitems \style d
+* {\code{USE_GPU_INFERENCE}} As the NPU and GPU share this driver,
+TIM-VX uses the value of this variable to determine
+which to use, "1" for GPU or "0" for NPU.
+\enditems
+
+\secc Profiling
+\begitems \style d
+* {\code{CNN_PERF}} Prints how long operations take. Requires \code{VIV_VX_DEBUG_LEVEL=1} and implied by \code{VIV_VX_PROFILE}.
+* {\code{NN_EXT_SHOW_PERF}} Shows the details of how the compiler determines performance.
+* {\code{VIV_VX_PROFILE}} Enables creation of \code{vprofiler_xxx.vpd} files which may be examined using the Vivante vAnalyzer tool from the Vivante VDK.
+Information is either per-node (value: \code{"1"}) or per-graph (value: \code{"2"}).
+* {\code{VIV_VX_DEBUG_LEVEL}} Prints extra debug information.
+* {\code{VIV_MEMORY_PROFILE}} Only applies to CPU/GPU.
+\enditems
+
+\secc Model Caching
+\begitems \style d
+* {\code{VIV_VX_ENABLE_CACHE_GRAPH_BINARY}} Enables saving of the compiled graph to disk with a hash so that the next time the same graph would be compiled, this \code{*.nb} file will be loaded instead. In addition to this the warmup time may take more than one inference\rfc{why?}.
+* {\code{VIV_VX_CACHE_BINARY_GRAPH_DIR}} Directory to save the cache files to.
+\enditems
+
 \sec Power Modes
+
+The NPU can be set to 4 different states,
+\begitems \style d
+* {On} Standard full-power
+* {Off} Can be powered off, since after leaving this state the device is reinitialized
+* {Idle} Clock speed lowered to $1/64^{th}$
+* {Suspend} Idle clock speed and requires some time to reach idle
+\enditems
+\rfc{Performance Counters for DMA Profiling}
+
 \sec Loading into Memory
+\secc Direct loading of images
 
 \chap Frameworks
 \sec Kernel Support
@@ -530,14 +597,26 @@ Models also need to be converted (and optimized)
 into the FlatBuffers tflite format before use
 \urlnote{https://ai.google.dev/edge/litert}.
 
+We must set an environment variable which libvx checks
+to see which device it should use, either NPU or GPU:
+
+\begtt
+export USE_GPU_INFERENCE=0
+\endtt
+
+Next we must load the external dynamic library
+which we pass into the LiteRT interpreter:
+
 \begtt\hisyntax{python}
-# set USE_GPU_INFERENCE=0
 import tflite_runtime.interpreter as tflite
 
 # load external delegate
 ext_delegate = [
-tflite.load_delegate("/usr/lib/libvx_delegate.so", "")
+    tflite.load_delegate("/usr/lib/libvx_delegate.so", "")
 ]
+\endtt
+
+\begtt\hisyntax{python}
 
 interpreter = tflite.Interpreter(
 model_path=args.model_file,
@@ -546,6 +625,7 @@ num_threads=args.num_threads)
 
 runner(x=np.array(range(10), dtype=np.float32))
 \endtt
+
 \sec Tensor Virtual Machine (TVM)
 \nocite[ExtendingTensoWang2022]
 As the full name Apache TVM might suggest,
@@ -593,6 +673,8 @@ obviously respecting the minimum arity.
 These graphs are meant to be assembled programatically,
 however ONNX does provide a textual form of their files.
 
+ONNX requires all modules to be attributes of the class.
+
 
 \secc NPU backend
 
@@ -637,6 +719,11 @@ output_names = ['output'])            # the model's output names
 \endtt
 
 \sec OpenCV
+
+\begtt
+cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/onnx/onnx_importer.cpp:1057: error: (-2:Unspecified error) in function 'handleNode'
+> Node [Conv@ai.onnx]:(onnx_node!node_Conv_0) parse error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/layers/layers_common.cpp:106: error: (-5:Bad argument) kernel_size (or kernel_h and kernel_w) not specified in function 'getKernelSize
+\endtt
 
 \begtt\hisyntax{python}
 import cv2 as cv
@@ -731,7 +818,7 @@ shared library \code{libOpenVX.so} with TIM-VX.
 \enditems
 
 \begitems \style d
-	* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
+* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
 * {\OpenVX~ API} Callable API implemented by hardware vendors\cite[OpenvxPortab2011]
 * {TIM-VX} Verisilicon Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX}
 (used by the VX delegate)
@@ -758,18 +845,33 @@ Source available but only authorized for use on TI hardware
 \sec Theoretical advantages
 \sec Benchmarking Practical Results
 
-Strangely the NPU is vastly slower
-than the CPU,
-about 10x so.
-Profiling with \code{perf}
-shows 16.28\% taken up by \code{do_lookup_x} from \code{ld-linux.so}
-and secondarily 6.61\% being taken up by \code{libOpenVX.so}'s \code{getPatchLocation}.
-.\rfc{I'll go investigate what these are now}
-
 \sec Device Tensors
 .\urlnote{https://onnxruntime.ai/docs/performance/device-tensor.html}
 
 \sec Startup slowdowns
+
+\secc Dynamic loading of Libraries
+
+In the case of both the \code{Python} and \code{C++} interfaces,
+using either \code{ONNX} or \code{LiteRT},
+the case always is that the interfacing library
+must be loaded dynamically.
+Loading may take up a significant amount of time,
+in one experiment after profiling with \code{perf}
+shows 16.28\% of the runtime taken up by \code{do_lookup_x} from \code{ld-linux.so}.
+\rfc{Be more specific about how long the total time took and what ran}
+
+\secc Bus
+
+Since the NPU acts as a completely separate device from the
+standard SOC's CPU and memory,
+even having its own clock,
+we must transfer the model and input parameters
+over a AXI/AHB\rfc{Specify what that is} bus
+and that takes time.
+Behind that Bus lies a Memory Controller,
+scheduler and more which all work together to slow down the call
+especially initially.
 
 \chap Demonstrations
 
@@ -949,6 +1051,89 @@ Overhead  Command  Shared Object                                       Symbol
    0.20%  python3  libNNArchPerf.so                                    [.] APMCalcNNCycleCountBandWidth                                                                                        ▒
    0.16%  python3  [kernel.kallsyms]                                   [k] zap_pte_range                                                                                                       ▒
    0.15%  python3  libc.so.6                                           [.] cfree@GLIBC_2.17
+\endtt
+
+Python with and without Delegate:
+\begtt
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+Warm-up time: 137.6 ms
+
+Inference time: 132.6 ms
+
+0.870588: military uniform
+0.031373: Windsor tie
+0.011765: mortarboard
+0.007843: bow tie
+0.007843: bulletproof vest
+
+real    0m1.436s
+user    0m1.290s
+sys     0m0.126s
+
+
+Loading external delegate from /usr/lib/libvx_delegate.so with args: {}
+INFO: Vx delegate: allowed_cache_mode set to 0.
+INFO: Vx delegate: device num set to 0.
+INFO: Vx delegate: allowed_builtin_code set to 0.
+INFO: Vx delegate: error_during_init set to 0.
+INFO: Vx delegate: error_during_prepare set to 0.
+INFO: Vx delegate: error_during_invoke set to 0.
+W [HandleLayoutInfer:332]Op 162: default layout inference pass.
+Warm-up time: 3373.6 ms
+
+Inference time: 3.2 ms
+
+0.870588: military uniform
+0.031373: Windsor tie
+0.011765: mortarboard
+0.007843: bow tie
+0.007843: bulletproof vest
+
+real    0m4.575s
+user    0m4.254s
+sys     0m0.263s
+\endtt
+
+C++ with and without Delegate:
+\begtt
+INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
+INFO: resolved reporter
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+INFO: invoked
+INFO: average time: 34.498 ms
+INFO: 0.768627: 653 military uniform
+INFO: 0.105882: 907 Windsor tie
+INFO: 0.0196078: 458 bow tie
+INFO: 0.0117647: 466 bulletproof vest
+INFO: 0.00784314: 835 suit
+
+real    0m0.221s
+user    0m0.511s
+sys     0m0.024s
+
+
+INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
+INFO: resolved reporter
+INFO: Vx delegate: allowed_cache_mode set to 0.
+INFO: Vx delegate: device num set to 0.
+INFO: Vx delegate: allowed_builtin_code set to 0.
+INFO: Vx delegate: error_during_init set to 0.
+INFO: Vx delegate: error_during_prepare set to 0.
+INFO: Vx delegate: error_during_invoke set to 0.
+INFO: EXTERNAL delegate created.
+INFO: Applied EXTERNAL delegate.
+W [HandleLayoutInfer:332]Op 162: default layout inference pass.
+INFO: invoked
+INFO: average time: 3.155 ms
+INFO: 0.768627: 653 military uniform
+INFO: 0.105882: 907 Windsor tie
+INFO: 0.0196078: 458 bow tie
+INFO: 0.0117647: 466 bulletproof vest
+INFO: 0.00784314: 835 suit
+
+real    0m3.460s
+user    0m3.267s
+sys     0m0.179s
 \endtt
 
 \bye

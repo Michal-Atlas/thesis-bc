@@ -2,39 +2,47 @@ from typing import List, Union, Literal
 
 import numpy as np
 import onnxruntime as rt
-from onnxruntime import NodeArg
 
 from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, INPUT_TYPE_NP, MOBILENET_PATH
-from test_rig.run.runner_class import Runner
+from test_rig.run.runner_class import Runner, DevType
 
 
 class ONNXRunner(Runner):
-    def run(self, device, cycles):
-        if device == "cpu":
+    def __init__(self, cycles: int, device: DevType):
+        super().__init__(cycles, device)
+        if self.device == "cpu":
             providers = ["CPUExecutionProvider"]
-        elif device == "npu":
+        elif self.device == "npu":
             providers = ["VSINPUExecutionProvider"]
-        elif device == "gpu":
+        elif self.device == "gpu":
             providers = ["CUDAExecutionProvider"]
         else:
-            raise Exception(f"Device {device} is not supported")
-        session = rt.InferenceSession(
+            raise Exception(f"Device {self.device} is not supported")
+
+        options = rt.SessionOptions()
+        # options.enable_profiling = True
+
+        self.session = rt.InferenceSession(
             ONNX_MODEL_PATH,
-            providers=providers
+            options,
+            providers=providers,
         )
 
-        input_tensor = np.full(
+        self.input_tensor = np.full(
             fill_value=[np.random.randn()],
             shape=INPUT_SHAPE,
             dtype=INPUT_TYPE_NP,
         )
-        output_names = [n.name for n in session.get_outputs()]
-        input_names = [n.name for n in session.get_inputs()]
-        for i in range(cycles):
-            print(f"\rCycle {i}/{cycles}...", end="")
+        self.output_names = [n.name for n in self.session.get_outputs()]
+        self.input_names = [n.name for n in self.session.get_inputs()]
 
-            session.run(
-                input_feed={k: input_tensor for k in input_names},
-                output_names=output_names,
-            )
-        print()
+    def load_data(self):
+        pass
+
+    def step(self):
+        self.session.run(
+            input_feed={k: self.input_tensor for k in self.input_names},
+            output_names=self.output_names,
+        )
+        # prof_file = self.session.end_profiling()
+        # print(prof_file)

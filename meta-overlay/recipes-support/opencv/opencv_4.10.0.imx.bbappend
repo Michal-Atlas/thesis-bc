@@ -5,7 +5,7 @@ EXTRA_OECMAKE:append = "\
 "
 
 DEPENDS:append = " tim-vx"
-RDEPENDS:append = " tim-vx"
+RDEPENDS:${PN}:append = " tim-vx"
 
 INSANE_SKIP:${PN}-dbg += "libdir file-rdeps"
 INSANE_SKIP:${PN} += "buildpaths"

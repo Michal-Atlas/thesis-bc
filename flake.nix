@@ -87,18 +87,61 @@
               nativeBuildInputs = with pkgs; [ git ];
               dependencies = with pkgs.python311Packages; [
                 # keep-sorted start
-                torch
+                ml-dtypes
                 numpy
                 onnx
                 onnxruntime
+                torch
                 typing-extensions
-                ml-dtypes
                 # keep-sorted end
               ];
             };
+            apache-tvm = pkgs.tvm.overrideAttrs (super: {
+              version = "0.19.0";
+            });
+            python-apache-tvm =
+              let
+                super = self'.packages.apache-tvm;
+              in
+              pkgs.python311Packages.buildPythonPackage
+                #pkgs.stdenv.mkDerivation
+                {
+                  pname = "tvm";
+                  inherit (super) version;
+                  format = "pyproject";
+                  src = super.src;
+                  preUnpack = ''
+                    cp -r $src work
+                    chmod -R 777 work
+                    sed 's|INPLACE_BUILD = .*|INPLACE_BUILD = True|g' -i work/python/setup.py
+                  '';
+                  sourceRoot = "work/python";
+                  TVM_LIBRARY_PATH = "${super}/lib";
+                  dependencies = with pkgs.python311Packages; [
+                    attrs
+                    cloudpickle
+                    decorator
+                    ml-dtypes
+                    numpy
+                    psutil
+                    scipy
+                    tornado
+                    typing-extensions
+                  ];
+                  buildInputs = [
+                    super
+                  ];
+                  nativeBuildInputs = with pkgs; [
+                    python311Packages.setuptools
+                    git
+                  ];
+                };
           };
           devShells.default = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
+              (pkgs.writeShellScript "set-tvm-var" ''
+                export TVM_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ self'.packages.apache-tvm ]}"; 
+              '')
               # keep-sorted start
               bmaptool
               git-repo
@@ -111,9 +154,10 @@
               (python311.buildEnv.override {
                 extraLibs = with python311Packages; [
                   # keep-sorted start
+                  self'.packages.onnxscript
+                  self'.packages.python-apache-tvm
                   tensorflow
                   torch
-                  self'.packages.onnxscript
                   # keep-sorted end
                 ];
                 ignoreCollisions = true;
@@ -124,12 +168,8 @@
               (pkgs.writeShellScriptBin "watch" ''
                 ${pkgs.entr}/bin/entr -s 'nix build . -o thesis.pdf' <<< thesis.tex
               '')
-              (pkgs.writeShellScriptBin "bind-mounts" ''
-                sudo mount --bind meta-overlay /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/ci-meta-tq/sources/meta-overlay
-                sudo mount --bind conf /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/ci-meta-tq/tqma8mpxl_build/conf
-              '')
               (pkgs.writeShellScriptBin "compenv" ''
-                docker run --rm -it -v /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/:/src --userns=keep-id 26d0
+                docker run --rm -it -v /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/:/src -v $PWD/meta-overlay:/src/ci-meta-tq/sources/meta-overlay:ro -v $PWD/conf:/src/ci-meta-tq/tqma8mpxl_build/conf:ro --userns=keep-id 26d0
               '')
             ];
           };
