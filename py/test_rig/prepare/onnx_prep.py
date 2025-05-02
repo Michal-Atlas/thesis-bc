@@ -45,16 +45,17 @@ class OnnxModule(nn.Module):
                  kernel_size=1,
                  ):
         super().__init__()
-        for i in range(MODEL_LENGTH):
-            self.__setattr__(f"conv{i}", nn.Conv2d(
-                in_channels,
-                out_channels,
-                kernel_size,
-            ))
+        # self.flatten = nn.Flatten(),
+        # self.dense1 = nn.Dense(128, activation='relu'),
+        # self.dense2 = nn.Dense(10)
 
     def forward(self, x):
-        for i in range(MODEL_LENGTH):
-            x = self.__getattr__(f"conv{i}")(x)
+        # x = self.flatten(x)
+        # x = self.dense1(x)
+        # x = self.dense2(x)
+        print(x)
+        x = x + 2
+        print(x)
         return {"output": x}
 
 

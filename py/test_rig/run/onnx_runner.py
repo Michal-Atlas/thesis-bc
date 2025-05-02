@@ -3,12 +3,12 @@ from typing import List, Union, Literal
 import numpy as np
 import onnxruntime as rt
 
-from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, INPUT_TYPE_NP, MOBILENET_PATH
+from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, INPUT_TYPE_NP, MOBILENET_TFLITE_PATH
 from test_rig.run.runner_class import Runner, DevType
 
 
 class ONNXRunner(Runner):
-    def __init__(self, cycles: int, device: DevType):
+    def __init__(self, cycles: int, device: DevType, model_path=ONNX_MODEL_PATH):
         super().__init__(cycles, device)
         if self.device == "cpu":
             providers = ["CPUExecutionProvider"]
@@ -23,25 +23,24 @@ class ONNXRunner(Runner):
         # options.enable_profiling = True
 
         self.session = rt.InferenceSession(
-            ONNX_MODEL_PATH,
+            model_path,
             options,
             providers=providers,
         )
 
-        self.input_tensor = np.full(
-            fill_value=[np.random.randn()],
-            shape=INPUT_SHAPE,
-            dtype=INPUT_TYPE_NP,
-        )
         self.output_names = [n.name for n in self.session.get_outputs()]
-        self.input_names = [n.name for n in self.session.get_inputs()]
+        self.inputs = {n.name: np.full(
+            fill_value=[np.random.randn()],
+            shape=n.shape,
+            dtype=INPUT_TYPE_NP,
+        ) for n in self.session.get_inputs()}
 
     def load_data(self):
         pass
 
     def step(self):
         self.session.run(
-            input_feed={k: self.input_tensor for k in self.input_names},
+            input_feed=self.inputs,
             output_names=self.output_names,
         )
         # prof_file = self.session.end_profiling()

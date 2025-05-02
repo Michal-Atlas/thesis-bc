@@ -20,8 +20,21 @@
       flake.lib = import ./lib;
       imports = [ treefmt.flakeModule ];
       perSystem =
-        { self', pkgs, ... }:
         {
+          self',
+          pkgs,
+          system,
+          ...
+        }:
+        {
+          #          _module.args.pkgs = import inputs.nixpkgs {
+          #           inherit system;
+          #           config = {
+          #cudaSupport = true;
+          #allowBroken = true;
+          #allowUnfree = true;
+          #          };
+          #        };
           treefmt = {
             projectRootFile = "flake.nix";
             programs = {
@@ -154,9 +167,11 @@
               (python311.buildEnv.override {
                 extraLibs = with python311Packages; [
                   # keep-sorted start
+                  keras
                   self'.packages.onnxscript
                   self'.packages.python-apache-tvm
                   tensorflow
+                  # tensorflow-datasets
                   torch
                   # keep-sorted end
                 ];
@@ -165,11 +180,17 @@
               (pkgs.writeShellScriptBin "connect" ''
                 ${pkgs.minicom}/bin/minicom --device /dev/ttyUSB3 --baudrate 115200
               '')
-              (pkgs.writeShellScriptBin "watch" ''
-                ${pkgs.entr}/bin/entr -s 'nix build . -o thesis.pdf' <<< thesis.tex
-              '')
               (pkgs.writeShellScriptBin "compenv" ''
-                docker run --rm -it -v /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/:/src -v $PWD/meta-overlay:/src/ci-meta-tq/sources/meta-overlay:ro -v $PWD/conf:/src/ci-meta-tq/tqma8mpxl_build/conf:ro --userns=keep-id 26d0
+                docker run --rm -it -v /blackpool/thesis/work/scarthgap.TQ.ARM.BSP.0001/:/src -v $PWD/meta-overlay:/src/ci-meta-tq/sources/meta-overlay:ro -v $PWD/conf:/src/ci-meta-tq/tqma8mpxl_build/conf:ro --userns=keep-id thesis-bitbake
+              '')
+              (pkgs.writeShellScriptBin "prepare" ''
+                docker run --rm -it -v ./py:/root thesis-py
+              '')
+              (pkgs.writeShellScriptBin "transfer" ''
+                scp -r py/test_model* py/test_rig imx:
+              '')
+              (pkgs.writeShellScriptBin "rebib" ''
+                papis --cc export --all > ~/cl/thesis/thesis.bib
               '')
             ];
           };

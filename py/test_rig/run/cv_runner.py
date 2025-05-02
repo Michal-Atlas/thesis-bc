@@ -6,7 +6,7 @@ from test_rig.run.runner_class import Runner, DevType
 
 
 class CVRunner(Runner):
-    def __init__(self, cycles: int, device: DevType):
+    def __init__(self, cycles: int, device: DevType, model_path = TFLITE_FILE_PATH):
         super().__init__(cycles, device)
 
         if device == "cpu":
@@ -18,17 +18,20 @@ class CVRunner(Runner):
         else:
             raise Exception(f"Device {self.device} is not supported")
 
-        # self.m = cv.dnn.readNet(ONNX_MODEL_PATH)
-        self.m = cv.dnn.readNet(TFLITE_FILE_PATH)
+        self.m = cv.dnn.readNet(model_path)
         self.m.setPreferableBackend(backend)
         self.m.setPreferableTarget(target)
+        # cv.setUseOpenVX(True)
+        print(f"=== Use in CV {cv.useOpenVX()} ===")
 
     def load_data(self):
         self.m.setInput(np.full(
-            fill_value=[1.0],
+            fill_value=[np.random.randn()],
             shape=INPUT_SHAPE,
-            dtype=INPUT_TYPE_NP,
+            # shape=(224, 224, 3),
+            # dtype=INPUT_TYPE_NP,
+            dtype=np.float32,
         ))
 
     def step(self):
-        return self.m.forward()
+        return (self.m.forward())

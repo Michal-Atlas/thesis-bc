@@ -8,15 +8,15 @@ from pstats import SortKey, Stats
 import timeit
 from typing import Optional, Any, List, Tuple
 import humanfriendly as hf
+import tflite_runtime.interpreter as tf
 
 import numpy as np
 
-from test_rig.config import CYCLES, MOBILENET_PATH, NPU_DEBUG, NPU_CACHE
+from test_rig.config import CYCLES, MOBILENET_TFLITE_PATH, NPU_DEBUG, NPU_CACHE, KERAS_MODEL_PATH, MOBILENET_ONNX_PATH
 from test_rig.run.cv_runner import CVRunner
 from test_rig.run.onnx_runner import ONNXRunner
 from test_rig.run.runner_class import Runner, DevType
 from test_rig.run.tf_runner import TFRunner
-from test_rig.run.tvm_runner import TVMRunner
 
 os.environ["USE_GPU_INFERENCE"] = "0"
 if NPU_DEBUG:
@@ -48,7 +48,8 @@ def run_profiled(name, module, extra):
     devices: Tuple[DevType] = typing.get_args(DevType)
     for device in devices:
         print(f"\n\n=== Testing {name} on {device} ===\n")
-        log_file = f"{name}_{device}.log"
+        log_id = f"{name}_{device}"
+        log_file = f"{log_id}.log"
         instance = module(
             cycles=CYCLES,
             device=device,
@@ -70,7 +71,6 @@ def run_profiled(name, module, extra):
                         detailed=True,
                     )
                     tee(f, f"Runtime #{i}: {time_fmt}\n")
-
                 show_profile(profile, f)
 
 
@@ -78,12 +78,22 @@ if __name__ == "__main__":
     # torch.set_default_dtype(torch.uint8)
     runners = [
         # ("ONNX", ONNXRunner, {}),
-        # ("OpenCV", CVRunner, {}),
-        ("TensorFlow", TFRunner, {}),
-        ("TensorFlowMobileNet", TFRunner, {
-            "model_path": MOBILENET_PATH,
-            "dtype": np.uint8,
+        # ("ONNXMobileNet", ONNXRunner, {
+        #     "model_path": MOBILENET_ONNX_PATH,
+        # }),
+        ("OpenCV", CVRunner, {}),
+        ("OpenCV", CVRunner, {
+            "model_path": MOBILENET_TFLITE_PATH,
         }),
+        # ("TensorFlow", TFRunner, {}),
+        # ("TensorFlowKeras", TFRunner, {
+        #     "model_path": KERAS_MODEL_PATH,
+        # }),
+        # ("TensorFlowMobileNet", TFRunner, {
+        #     "model_path": MOBILENET_TFLITE_PATH,
+        #     "dtype": np.uint8,
+        #     "reshape": False,
+        # }),
         # TVMRunner,
     ]
     for (n, m, e) in runners:

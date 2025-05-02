@@ -4,32 +4,10 @@
 \department{Katedra Počítačových Systémů}
 \title{NPU/AI Accelerator support for PikeOS real-time operating system}
 \author{Michal Žáček}
-\abstractEN{
-	NPU (Neural Processing Unit) accelerators in PCs or notebooks are becoming more and more important these days.  The target platform considered in this thesis is the board TQMa8MPxL\urlnote{
-https://www.tq-group.com/en/products/tq-embedded/arm-architecture/tqma8mpxl
-} but results should apply to any device with the NPU accelerator running under Linux and/or PikeOS.
-Neither the Linux kernel nor PikeOS (real-time embedded OS)
-currently support AI/ML acceleration using NPUs.
-The objective of the thesis is to conduct research of
-open source frameworks with the aim to integrate a reasonably
-good SW support for utilizing this accelerator to enhance the performance of
-machine learning (ML) algorithms on these target platforms.
-
-\begitems \style N
-* Analyze and evaluate implementation of the SW support for utilizing NPU accelerators in representative open-source frameworks.
-* Investigate modules or libraries used in these frameworks for communication with NPU accelerators.
-* Review ML algorithms implemented in these frameworks and select most appropriate frameworks for testing.
-* Design benchmark data sets for testing the ML performance of the selected frameworks on the given Linux platform.
-* Test the performance of selected frameworks on the given Linux platform.
-* Based on these findings, select the most appropriate framework for the integration into the Linux platform and elaborate an integration procedure based  on e.g. Yocto packaging system.
-* Document problems encountered during the integration process.
-* Propose a procedure for the integration of the SW support for the NPU accelerator on the PikeOS platform.
-\enditems
-
-}
+\abstractEN{D}
 \abstractCZ{D}
 \declaration{D}
-\date{2025}
+\date{2025-05-16}
 \draft
 
 \def\OpenVX{OpenVX™}
@@ -37,6 +15,7 @@ machine learning (ML) algorithms on these target platforms.
 \def\NXP{NXP}
 \def\textemdash{-}
 
+\totf
 \makefront
 
 \chap Introduction
@@ -57,9 +36,11 @@ valuable tool when working with neural networks.
 Recently even more specialized hardware has become available
 to meet the rising demand in having access to these technologies
 in more portable devices or for use in embedded situations.
-Neural Processing Units\fnote{Historically also called Versatile/Tensor/Intelligence Processing Units (VPU/TPU/IPU),
-	however for simplicity's sake we will only use the term NPU and only deviate if a specific
-	function or product uses one of the alternatives},
+Neural Processing Units\fnote{
+Historically also called Versatile/Tensor/Intelligence Processing Units (VPU/TPU/IPU),
+however for simplicity's sake we will use the term NPU and only deviate if a specific
+function or product uses one of the alternatives
+},
 are becoming more common,
 however these don't often come with universal drivers
 and the most widespread standard today has no freely adoptable implementation.
@@ -83,44 +64,113 @@ a neural network engine
 along with a backing storage.
 The device works with 4-element vectors of 16/32-bit IEEE floating-point or 8/16/32-bit integers either signed or unsigned.
 The device implements the \OpenVX~hardware API
-along with some extension and
-\VeriSilicon~provides an official open-source library through which to call this API,
-called the
-Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX?tab=readme-ov-file}
-(further shortened to TIM-VX) contains C++ bindings,
-and Ovxlib contains C bindings\rfc{Does this get called by TIM-VX, does it use SDKs?}.
-TIM-XV calls into one of two SDKs, the \VeriSilicon~Unified \OpenVX~SDK\rfc{TODO}
+along with some extensions and
+\VeriSilicon~provides two separate official libraries through which to call this API.
+The open-source Tensor Interface Module\cite[VerisiliconTim2025]
+(further shortened to TIM-VX) which contains C++ bindings,
+and Ovxlib which contains C bindings.
+TIM-XV calls into one of two SDKs, the \VeriSilicon~Unified \OpenVX~SDK
 supporting both compiling and running using either the GPU and NPU units,
-and the\rfc{proprietary?} VIP-Lite SDK that only contains the runtime for the NPU.
+and the
+(as far as I can tell proprietary,
+since the traces of this SDK online
+are close to nonexistent)
+VIP-Lite SDK that only contains the runtime for the NPU.
 TIM-VX is used as the target for third-party frameworks targetting the board's NPU.
+Of these we used specifically the former VeriSilicon SDK
+also often listed as Vivante SDK or directly
+\code{imx-gpu-viv}\fnote{The name is GPU, however it contains shared drivers for both NPU and GPU.}
+in recipes,
+as this was the one used by all of the NXP recipes.
 
-The device also contains internal facilities for profiling purposes.\rfc{TODO}
+The SDK includes the following libraries:
+\begitems
+* \code{libArchModelSw.so*}
+* \code{libCLC.so}
+* \code{libGAL.so*}
+* \code{libNNArchPerf.so*}
+* \code{libOpenVX.so*}
+* \code{libOpenVXC.so}
+* \code{libOpenVXU.so}
+* \code{libVSC.so*}
+\enditems
 
-\rfc{Include image from https://raw.githubusercontent.com/VeriSilicon/TIM-VX/8494275d7608942aa584c9c13bd5e2d77be9906c/docs/image/timvx_overview.svg}
+Of these only the ones marked with \code{*} are used by \OpenVX{}.
+
+\glos {TIM-VX}{Tensor Interface Module for OpenVX}
 
 \chap File Formats
 
 \sec Model File Properties
+
 \secc Model conversion
-eIQ toolkit
-In the converted model,
-the neutronGraph node is already generated. The neutron-delegate only captures the neutronGraph node and
-offloads the work to Neutron-S. Inline compilation is not supported yet. [page 6]
 
 Apparently there are ways to compile a model for a specific NPU,
 even multiple models so they efficiently live together
-in memory.
-\urlnote{https://coral.ai/docs/edgetpu/compiler/}
+in memory\cite[CoralEdgeTpuCompiler].\rfc{BIG TODO}
 
-TensorFlow is used in preparation and then compiled to a lighter LiteRT format.
-\urlnote{https://ai.google.dev/edge/litert/models/convert}
+TensorFlow is used in preparation and then compiled to a lighter LiteRT format\cite[LitertOverview].
 
 \secc Quantization
-\rfc{a.k.a. using narrower floats than the model was built with}
-Since the NPU itself is built for
-8/16-bit wide floats \cite[IMxMachineLeLfRe2024].
 
-\sec Keras
+Since the NPU itself is built for
+all of 8/16/32-bit wide floats \cite[IMxMachineLeLfRe2024]
+and different sizes of integers,
+we may wish to lessen the load and speed-up the inference
+by opting to sacrifice the precision of the result
+and instead of running the entire process
+with F32, we use INT8,
+according to \cite[PyTorchQuant]
+this may lead to the operations being implemented 2 to 4
+times faster with integers.
+
+\sec Keras / HDF5
+
+Keras is a library released in 2010
+as part of a research effort,
+originally at Alphabet Inc\cite[KerasWikiped].
+Its relation to TensorFlow will be apparent later.
+Keras' currently used filetype \code{.keras} is a wrapper format consisting of
+a ZIP-archive containing an \code{.h5} file
+holding the layers and weights of a model,
+and some \code{json} metadata about Keras' configuration,
+the creation date, version information, etc.
+
+HDF stands for Hierarchical Data Format,
+it contains a POSIX-filesystem style hierarchy of groups
+akin to directories,
+even supporting hard and soft links.
+Datasets take the role of files and contain
+tensors with associated shapes, dtypes and
+can be read and written to treating them as numpy arrays\cite[HDF5PY,HDF5FGGS].
+
+\begtt\hisyntax{py}
+import h5py
+
+data = h5py.File("model.weights.h5")
+
+# All valid
+data['/layers/flatten/vars']
+data['layers/flatten/vars']
+subdata = data['layers']['flatten']
+subdata['vars']
+
+data['/layers/dense/vars/0']
+#=> <HDF5 dataset "0": shape (784, 128), type "<f4">
+
+data['/layers/dense/vars/0'][0]
+#=> array([ 0.01777279,  0.07076738,
+           -0.01541622,  0.06383523,
+           -0.05744237,  0.06602553,
+           ...])
+
+\endtt
+
+As compression is done by Keras in-memory
+so saving and loading are transparent
+to wether one is working with a ZIP archive
+or a directory of files.
+
 \sec Safetensors
 
 \midinsert \clabel[safetensordef]{SafeTensor format structure}
@@ -150,8 +200,14 @@ An example taken from \cite[ExploitingPythHamann2020].
 
 \sec Block map \code{.bmap}
 
-Relates to Yocto project's \code{bmaptool}\urlnote{https://github.com/yoctoproject/bmaptool}.
-\rfc{It's not yocto but forked from intel?}
+Relates to Yocto project's (formerly Intel's) \code{bmaptool} from \cite[YoctoBmap],
+which is used to flash data similarly to \code{dd}.
+Unlike \code{dd} this tool verifies the integrity
+of flashed data, supports more complex arrangements
+such as sourcing the image from a remote server,
+supports sparse definitions
+and includes protections from accidentally destroying
+data on disks that seem like regular mounted block devices.
 
 \sec System Package Data Exchange \code{.spdx}
 
@@ -177,53 +233,41 @@ Contains build commands for the \code{wic} command.
 \code{.dts} describes hardware.\urlnote{https://wiki.freebsd.org/FlattenedDeviceTree\#Device\_tree\_source\_.28DTS.29}
 Afterwards compiled into \code{.dtb}.
 
+\chap TIM-VX
+
+\midinsert
+\picw=\hsize
+\cinspic{timvx_overview.pdf}
+\caption/f A diagram showing TIM-VX's role in running models on NPUs\cite[VerisiliconTim2025].
+\endinsert
+
 \chap Setting up the environment
 
 Our testing environment consists of a Yocto distribution,
 running on our afformentioned chip.
 
-
-\begtt
-Build Configuration:
-BB_VERSION           = "2.8.0"
-BUILD_SYS            = "x86_64-linux"
-NATIVELSBSTRING      = "universal"
-TARGET_SYS           = "aarch64-poky-linux"
-MACHINE              = "tqma8mpxl-mba8mpxl"
-DISTRO               = "fsl-imx-wayland"
-DISTRO_VERSION       = "6.6-scarthgap"
-TUNE_FEATURES        = "aarch64 armv8a crc crypto"
-TARGET_FPU           = ""
-meta
-meta-poky            = "HEAD:200d12b6a58ad961d60a7774ca0f7a9d29498724"
-meta-oe
-meta-python
-meta-multimedia      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
-meta-freescale       = "HEAD:0627128b341cfb2bef7a0832ce8cac0ce1127f13"
-meta-qt6             = "HEAD:586a6cb5aec755803a3be3cec359baafe89d6432"
-meta-tq              = "HEAD:257b8c0b4b6df3bb27fb69bd2312dd254c73fed3"
-meta-imx-ml
-meta-imx-sdk
-meta-imx-bsp         = "HEAD:219f6d04a4c339eb6f2dc626f944bbdf9a716ff5"
-meta-arm
-meta-arm-toolchain   = "HEAD:950a4afce46a359def2958bd9ae33fc08ff9bb0d"
-meta-freescale-distro = "HEAD:b9d6a5d9931922558046d230c1f5f4ef6ee72345"
-meta-overlay         = "<unknown>:<unknown>"
-meta-virtualization  = "HEAD:6f3c1d8f90947408a6587be222fec575a1ca5195"
-meta-filesystems
-meta-networking      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
-meta-tpm
-meta-parsec          = "HEAD:459d837338ca230254baa2994f870bf6eb9d0139"
-meta-clang           = "HEAD:2b7433611d80f6d0ee1b04156fa91fc73d3c2665"
-\endtt
-
-\code{meta-overlay} here is our custom package for the purposes
-of thi thesis.
+\code{meta-overlay} will further be used to refer
+to our custom layer for the purposes
+of this thesis.
 
 We use both the BSP and related layers directly from the TQ website,
 followed by the \NXP{} meta-imx layer,
-cloned via the \code{repo} utility from their manifest
-repository \urlnote{https://github.com/nxp-imx/imx-manifest.git}.
+cloned via the \code{repo}\cite[GoRepo] utility from their manifest
+repository \cite[GithubNxpIm].
+
+Repo is a utility developed by Alphabet
+to work with multiple, completely separate
+as far as Git is concerned,
+repositories and treat them
+as Git would treat submodules.
+The repositories are initialized from
+an Extensible Markup Language (XML)
+file hosted in an arbitrary repository,
+which contains a set of remotes and
+"projects" (repositories)
+that will be fetched into the final checkout.
+
+\glos {XML}{Extensible Markup Language}
 
 \begtt
 repo init \
@@ -232,12 +276,70 @@ repo init \
   -m imx-6.6.52-2.2.0.xml
 \endtt
 
+Afterwards a bit of guesswork was required to get
+all the compatible versions of all the layers and packages.
+A combination of some layers from
+the original BSP and
+the NXP-IMX manifest was used in the end.
+Mostly due to mismatches in \code{gstreamer} versions
+as meta-imx requires a version not below 1.24.0,
+but the bsp provides 1.22.5.
+The result of this is found in the Appendix \ref[buildconf].
+
 Following this we configure a build directory
 with the Machine: \code{tqma8mpxl-mba8mpx}
 and Distro: \code{fsl-imx-wayland}.
 
-Flashing is then done with the command:
-\code{sudo uuu -v -b emmc_all ./images/imx-boot-tqma8mpxl-mba8mpxl-mfgtool.bin-flash_spl_uboot ./images/imx-image-full-tqma8mpxl-mba8mpxl.rootfs.wic}
+\begtt
+source setup-environment tqma8mpxl_build
+\endtt
+
+Next we need an environment with all the programs that bitbake expects
+and needs to function.
+In our case we opted for an Ubuntu:22.04 Docker container,
+with some extra packages installed as determined by consulting \cite[YoctoPackages]:
+
+\begtt
+FROM ubuntu:22.04
+RUN apt -o APT::Sandbox::User=root update
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC \
+      apt -o APT::Sandbox::User=root \
+      install -y gawk wget git diffstat unzip texinfo gcc \
+      build-essential chrpath socat cpio python3 python3-pip \
+      python3-pexpect xz-utils debianutils iputils-ping \
+      python3-git python3-jinja2 python3-subunit zstd \
+      liblz4-tool file locales libacl1
+RUN locale-gen en_US.UTF-8
+\endtt
+
+After building we may enter the environment:
+
+\begtt
+docker run --rm -it \
+  -v .../scarthgap.TQ.ARM.BSP.0001:/src \
+  --userns=keep-id bitbake-env
+\endtt
+
+And we may now build the project:
+
+\begtt
+bitbake imx-image-full
+\endtt
+
+The output will be available under:
+
+\begtt
+./tmp/work/imx8mpevk-poky-linux/imx-image-full/...
+  .../1.0/deploy-imx-image-full-image-complete
+\endtt
+
+This may take many hours.
+Once successful, flashing is then done with the command:
+\begtt
+sudo uuu -v -b sd_all \
+  ./images/imx-boot-tqma8mpxl-mba8mpxl-mfgtool.bin-flash_spl_uboot \
+  ./images/imx-image-full-tqma8mpxl-mba8mpxl.rootfs.wic
+\endtt
 
 \sec Kernel Tests
 
@@ -289,7 +391,9 @@ is the first to support VSINPU, however
 the release version had broken support for
 targets with no fp16 support,
 therefore a pr's commit with the fix needs to be used.
+
 \code{GitHub - Issue: 23957, PR: 23978}
+
 It is very fast on track to be merged into main,
 but now we apply these few commits with a patch.
 
@@ -298,26 +402,47 @@ SRC_URI:append = " file://fajin-corp_gh_pr_23978.patch"
 \endtt
 
 Another patch is required though as the function
+
 \code{VSINPUExecutionprovider::GetCapability}
+
 in the file \code{vsinpu_execution_provider.cc}
-calls a logger, yet omits to declare it so
+calls a logger, yet omits to declare one so
 we must add it manually.
+
+\begtt
+const auto& logger = *GetLogger();
+\endtt
+
+The call to \code{save_build_and_package_info}
+in \code{setup.py},
+causes an error.
+It is only a buildinfo log,
+so simply removing it creates a warning
+when importing the module,
+however without hindering further use.
+
+The patch is included with the work.
 
 \begtt
 SRC_URI:append = " file://fix_logger.patch"
 \endtt
 
-The call to \code{save_build_and_ppackage_info}
-in \code{setup.py},
-causes an error.
-It is only a buildinfo log,
-so simply removing it only creates a warning
-when importing the module without hindering further use.
-
 \sec TIM-VX
 
-This was simply needed to be updated to version 1.2.22.
-\rfc{Specify the role of TIM-VX}
+This was simply needed to be updated to version 1.2.22,
+from the official VeriSilicon repo \ref[tim_bb].
+
+\midinsert
+\label[tim_bb]
+\begtt
+SRC_URI = "${TIM_VX_SRC};nobranch=1"
+TIM_VX_SRC ?= "git://github.com/VeriSilicon/TIM-VX.git;protocol=https"
+SRCREV = "8494275d7608942aa584c9c13bd5e2d77be9906c"
+\endtt
+\caption/f TIM-VX's new version bb recipe
+\endinsert
+
+\rfc{I don't remember why??? Rerun bitbake without update}
 
 \sec OpenCV
 
@@ -325,8 +450,11 @@ The build recipe for OpenCV is patchable,
 we add TIM-VX to dependencies,
 enable it in OpenCV and again
 point the configuration script at our installation
-directory.
+directory with the file \code{opencv_\%.bbappend}
+containing \ref[opencv_bb].
 
+\midinsert
+\label[opencv_bb]
 \begtt
 EXTRA_OECMAKE:append = "\
     -D BUILD_opencv_gapi=OFF \
@@ -336,35 +464,116 @@ EXTRA_OECMAKE:append = "\
 
 DEPENDS:append = " tim-vx"
 RDEPENDS:${PN}:append = " tim-vx"
+
+INSANE_SKIP:${PN}-dbg += "libdir file-rdeps"
+INSANE_SKIP:${PN} += "buildpaths"
+\endtt
+\caption/f OpenCV recipe to build with external TIM-VX
+\endinsert
+
+Compiling with external TIM-VX lib like this,
+which is strongly advised against\cite[OpenCVTimVxBackend],
+yields a segfaulting library which can be seen in \ref[cvvx_seg].
+
+\medinsert
+\label[cvvx_seg]
+\begtt\hisyntax{python}
+>>> cv.setUseOpenVX(True)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+cv2.error: OpenCV(4.10.0) .../src/ovx.cpp:101:
+  error: (-215:Assertion failed)
+    !flag && "OpenVX support isn't enabled at compile time"
+    in function 'setUseOpenVX'
+
+>>> cv.useOpenVX()
+False
+
+# Segfaults
+self._model = cv.FaceDetectorYN.create(...)
+\endtt
+\caption/f Trying to enable OpenVX in OpenCV with external library
+\endinsert
+
+Trying to compile TIM-VX directly in OpenCV requires us
+to add Fortran to our toolchain due to a new dependence on
+\code{lapack} lest we encounter error \ref[fortran_missing_err].
+We also must re-enable OpenCV downloads since the default
+recipe tries to prevent random downloads during configuration,
+by caching the downloads themselves.
+This can be seen in our new recipe \ref[cvvx].
+
+\midinsert
+\label[fortran_missing_err]
+\begtt
+libgfortran was skipped:
+  libgfortran needs fortran support to be enabled in the compiler
+\endtt
+\caption/f Fortran missing from Toolchain error
+\endinsert
+
+\midinsert
+\label[cvvx]
+\begtt
+EXTRA_OECMAKE:append = "\
+    -D BUILD_opencv_gapi=OFF \
+    -D WITH_TIMVX=ON \
+    -D OPENCV_ALLOW_DOWNLOADS=ON \
+"
+
+DEPENDS:append = " tim-vx lapack"
+RDEPENDS:${PN}:append = " tim-vx lapack"
+\endtt
+\caption/f OpenCV recipe to build with internal TIM-VX
+\endinsert
+
+Enabling Fortran breaks the \code{tpm2-tss-engine}
+and \code{isp-imx-dev} packages
+that is requires by \code{packagegroup-imx-ml}
+so we try disabling what is wrong:
+
+\begtt
+RDEPENDS:packagegroup-imx-ml:remove = " tpm2-tss-engine"
+INSANE_SKIP:isp-imx-dev += "dev-elf"
 \endtt
 
-\sec TVM
-
-TVM is currently not yet working
-as it builds but requires
-\code{python3-scipy} at runtime,
-when trying to run inference,
-which I haven't managed to install properly yet.
+This compiles an image,
+however OpenCV still throws an error when calling
+\code{cv.setUserOpenVX(True)} claiming
+it is not compiled with the given support
+and when run anyways,
+the speeds are identical for both
+set backends,
+however the speed seems suspiciously high
+(in magnitude of hundreds of microseconds).
 
 \chap The Graph Workflow
 
 \sec Python Subclasses modelling Tensor functions
 
-Most frameworks analyzed use Python,
+All frameworks have Python APIs,
 and all seem to use a similar form of abstraction.
-They declare some class, in the case of PyTorch
-this would be \code{torch.nn.Module}\cite[ModulePytorc],
-and a Model is defined by a class that inherits
-from this root,
+They declare some class in the case of both PyTorch and ONNX
+this could be \code{torch.nn.Module}\cite[ModulePytorc].
+A model is then defined as a class that inherits from this root,
 and overrides one or more specific methods.
 
-For efficiency's and compatibility's sake these functions may
-later be compiled into other forms
+Once we instantiate such a class
+we receive an object that takes
+tensors and returns results.
+They can be freely composed into graphs
+of arbitrarily complex modules containing modules
+which all get compiled to a single graph.
+
+For efficiency's and compatibility's sake these functions are
+later compiled into other forms
 especially when serialized into the form of any model file.
 
 In the case of ONNX specifically we may take
-the example code of:
+the example code \ref[onnx_in].
 
+\midinsert
+\label[onnx_in]
 \begtt \hisyntax{python}
 class OnnxModule(nn.Module):
     def __init__(self):
@@ -373,20 +582,33 @@ class OnnxModule(nn.Module):
     def forward(self, x):
         return x + 3
 \endtt
+\caption/f Python code to be converted to ONNX IR
+\endinsert
 
-Which may be seen by the ONNX exporter as:
+Which may be seen by the ONNX exporter\fnote{Shortened by hand for readability} as \ref[onnx_pseudo].
 
+\midinsert
+\label[onnx_pseudo]
 \begtt
 class GraphModule(torch.nn.Module):
     def forward(self, x: "f32[100, 128]"):
-         # File: /home/michal_atlas/cl/thesis/py/test_rig/prepare/onnx.py:48 in forward, code: return x + 3
-        scalar_tensor_default: "f32[]" = torch.ops.aten.scalar_tensor.default(3, dtype = torch.float32)
-        add: "f32[100, 128]" = torch.ops.aten.add.Tensor(x, scalar_tensor_default);  x = scalar_tensor_default = None
+         # File: ./onnx.py:48 in forward, code: return x + 3
+        scalar_tensor_default:
+          "f32[]" = torch.ops.aten
+                         .scalar_tensor
+                         .default(3, dtype = torch.float32)
+        add:
+          "f32[100, 128]" = torch.ops.aten
+                                 .add.Tensor(x, scalar_tensor_default)
         return (add,)
 \endtt
+\caption/f ONNX Pseudocode
+\endinsert
 
-Before being compiled into low-level representation like so:
+Before being compiled into a low-level representation as shown in \ref[onnx_ir].
 
+\midinsert
+\clabel[onnx_ir]{ONNX IR}
 \begtt
 graph(
     name=main_graph,
@@ -398,14 +620,36 @@ graph(
     ),
 ) {
     0 |  # node_Constant_0
-         %"val_0"<?,?> ⬅️ ::Constant() {value=Tensor<INT64,[]>(array(3), name=None)}
+         %"val_0"<?,?> <- ::Constant() {
+         %  value=Tensor<INT64,[]>(array(3), name=None)
+         %}
     1 |  # node_Cast_1
-         %"scalar_tensor_default"<FLOAT,[]> ⬅️ ::Cast(%"val_0") {to=FLOAT}
+         %"scalar_tensor_default"<FLOAT,[]> <- ::Cast(%"val_0") {
+         %  to=FLOAT
+         %}
     2 |  # node_Add_2
-         %"add"<FLOAT,[100,128]> ⬅️ ::Add(%"x", %"scalar_tensor_default")
+         %"add"<FLOAT,[100,128]> <- ::Add(%"x", %"scalar_tensor_default")
     return %"add"<FLOAT,[100,128]>
 }
 \endtt
+\caption/f ONNX IR
+\endinsert
+
+How this is done from arbitrary Python code is by utilising
+a \code{FakeTensor} class,
+on which the algorithm actually runs,
+however instead of the operations
+happening they are recorded in the background
+and the result is again always a \code{FakeTensor}.
+After the algorithm finishes,
+the libraries inspect what operations were performed
+on what tensors and constructs an equivalent program
+through some backend, TorchScript, Dynamo, etc.
+This approach allows quite arbitrary Python programs
+to be compiled however at the loss of semantics.
+For example the classic \code{map(lambda x: x + 2, list)}
+would just be compiled into a series of completely unrelated
+additions on some projected content of the tensor.
 
 These models also always have a static type of input and outputs
 that may be unconstrained by the Python class which implements it
@@ -414,6 +658,24 @@ The part of the type that determines the size of a tensor
 is usually called their "shape" in this context.
 We set our input shape to \code{(100,128)} in this example
 so the exported graph has annotations like \code{f32[100, 128]}.
+
+Oftentimes a model is made to accept a large "batch" of inputs
+to parallelize inference.
+This is implemented as simply
+setting the first dimension as dynamic,
+resulting in shapes such as \code{(?,100,128)}.
+Models must be explicitly resized before using this dynamic size
+as it will default to 1 otherwise.
+
+\midinsert
+\begtt \hisyntax{python}
+shape = (BATCH_SIZE, *shape[1:])
+model.resize_tensor_input(0, shape)
+model.allocate_tensors()
+model.set_tensor(0, input_data)
+\endtt
+\caption/f Setting input tensors with batches
+\endinsert
 
 The subset of python supported is quite large,
 even code such as \code{[ sum(n) for n in x ]}
@@ -444,17 +706,10 @@ def forward(self, x):
   return x
 \endtt
 
-It is also useful to note that this code defines\rfc{where??}
+It is also useful to note that this code defines
 string names for the inputs and outputs of a graph,
-these are then useful for retreiving outputs or setting inputs.
-
-.\rfc{List of transpilers perhaps}
-\begtt
-[torch.onnx] Obtain model graph for `OnnxModule()` with Torch Script... ❌
-[torch.onnx] Obtain model graph for `OnnxModule()` with internal Dynamo apis...
-\endtt
-
-\secc \code{__init__}
+these are then used to retreive many outputs or set inputs
+in a human-readable way.
 
 \secc \code{forward} (mandatory)
 
@@ -462,7 +717,23 @@ This is the crux of the pipeline,
 it defines the actual operations performed on
 the inputs and returns what the Graph node would have
 as outputs.
-\rfc{How are many inputs/outputs handled?}
+
+If in need of multiple inputs and outputs
+the function is allowed to take more than 1 argument,
+and they will be matched according to name.
+If on the other hand I want to return
+multiple outputs we can wrap
+the return in a dictionary with keys
+being the names of our outputs and values being
+the given output tensors.
+
+\secc \code{__init__}
+
+Some frameworks, namely ONNXRuntime want their modules
+to be attributes of the given object,
+and so we usually then initialise our submodules here and refer to them in \code{forward}.
+For example including \code{self.conv1 = ...} inside the constructor
+and then calling as \code{x = self.relu(x)} in our \code{forward} function.
 
 \secc Movement functions
 
@@ -472,55 +743,73 @@ However, this also hints to the given framework
 what the target is which is also taken into account
 in cases of optimization.
 
-\sec Compiling down to hardware
-\rfc{PyTorch at least seems to use something called Triton}
+\sec Keras
 
-It seems that these frameworks really do
-compile large parts of the python language
-into one of many target IRs.
+TensorFlow interops and includes a complete interface to the Keras library,
+which includes its own additional ways to define models.
+For instance \code{keras.api.applications} contains prebuilt models
+for various uses such as image recognition
+that can then be freely used and manipulated for our needs.
+Another way is the \code{keras.models.Sequential} class,
+which takes a list of layers and concatenates them
+one after another into a model.
+Keras layers are much like TensorFlow modules.
 
-\begtt\hisyntax{python}
-def foo(x):
-  a = [2] + [ 3 for _ in range(2) ]
-  return x * a[0] + 1
-\endtt
+\sec Other Tools
 
-\begtt
-print(torch.jit.script(foo).code)
+\secc Visualization: Netron & Zetane 
 
-def foo(x: Tensor) -> Tensor:
-  _0 = [2]
-  _1 = annotate(List[int], [])
-  for _2 in range(2):
-    _3 = torch.append(_1, 3)
-  a = torch.add(_0, _1)
-  return torch.add(torch.mul(x, a[0]), 1)
-\endtt
+Netron from \cite[NetronApp] is an incredibly
+useful open-source tool for inspecting,
+visualizing and generally debugging machine learning model graphs.
+Of relevant formats it supports ONNX, TensorFlow and Keras,
+along with support to display all metadata contained in a given layer.
+It runs either as a web app or an offline local program.
+Netron provides an interactive graph GUI
+which allows searching, layouting, and
+exporting to PNG or SVG.
+An example of such an export is figure \ref[netron].
 
-\begtt
-print(torch.fx.symbolic_trace(foo).graph)
+\midinsert
+\label[netron]
+\cinspic{./netron_test.pdf}
+\caption/f Example of a Netron graph render
+\endinsert
 
-graph():
-  %x : [num_users=1] = placeholder[target=x]
-  %mul : [num_users=1] = call_function[target=operator.mul](args = (%x, 2), kwargs = {})
-  %add : [num_users=1] = call_function[target=operator.add](args = (%mul, 1), kwargs = {})
-  return add
-\endtt
+Zetane from \cite[Zetane] deserves an honourable mention,
+it is a closed-source batteries included
+environment for designing ML software and
+includes a viewer very similar to 
+Netron.
+This viewer however is much
+more capable and includes 3D visualizations
+of convolutions on images, heatmaps,
+graphs of values,
+running the model with weights
+and inspecting propagation.
+It is also callable directly via a Python API,
+so unlike Netron it can be integrated as a frontend into
+other projects.
 
-\begtt
-print(torch.export.export(Foo(), (2,)).graph)
+\secc Conversion: Tensor2onnx & Tflite2onnx
 
-graph():
-  %x : [num_users=0] = placeholder[target=x]
-  return (5,)
-\endtt
-\rfc{Reference Manual 13.16 for NPU}
+All manner of programs exist to convert between
+model formats,
+which is not a trivial task however.
+Very generally models can be converted
+but some programs lose details,
+such as weights, names,
+structures that are concisely represented
+may unwrap into larger forms, and more.
+For a given application,
+care should be given to verify
+that all required information is intact.
 
 \chap Hardware Specifics
 
 \sec NPU Contents
 
-\cite[IMx8mPlusAp]
+This entire section references mainly \cite[IMx8mPlusAp].
 
 \secc Parallel Processing Unit (PPU)
 
@@ -536,7 +825,7 @@ Does 1152 MAC operations per clock cycle.
 
 Supported operations are
 
-\ctable{cl}{
+\ctable{ll}{
 Pooling & Max, average \cr
 Unpooling & Yes \cr
 Activation & ReLU, Leaky ReLU (LUT for other types) \cr
@@ -544,11 +833,17 @@ Normalization & Yes \cr
 Region Proposal Support & Yes \cr
 }
 
-\secc OpenVX Hardware Support?
+\secc Interrupts
 
+The NPU can send CPU interrupts, these are set using the driver and cannot in fact be understood without the driver since the NPU and driver both assign arbitrary meaning to the given bits of the interrupt info register.
+
+\secc OpenVX Hardware Support
+.\rfc{BIG TODO}
 
 \sec Configuration Environment Variables read by TIM-VX
-.\rfc{cite Machine Learning Guide[6.1.2]}
+
+In the i.MX Machine Learning User's Guide \cite[IMxMachineLeLfRe2024] section 6.1.2,
+we can read about configuration variables.
 
 \begitems \style d
 * {\code{USE_GPU_INFERENCE}} As the NPU and GPU share this driver,
@@ -558,18 +853,42 @@ which to use, "1" for GPU or "0" for NPU.
 
 \secc Profiling
 \begitems \style d
-* {\code{CNN_PERF}} Prints how long operations take. Requires \code{VIV_VX_DEBUG_LEVEL=1} and implied by \code{VIV_VX_PROFILE}.
-* {\code{NN_EXT_SHOW_PERF}} Shows the details of how the compiler determines performance.
-* {\code{VIV_VX_PROFILE}} Enables creation of \code{vprofiler_xxx.vpd} files which may be examined using the Vivante vAnalyzer tool from the Vivante VDK.
+* {\code{CNN_PERF}}
+
+Prints how long operations take.
+Requires \code{VIV_VX_DEBUG_LEVEL=1} and implied by \code{VIV_VX_PROFILE}.
+
+* {\code{NN_EXT_SHOW_PERF}}
+
+Shows the details of how the compiler determines performance.
+
+* {\code{VIV_VX_PROFILE}}
+
+Enables creation of \code{vprofiler_xxx.vpd} files which may be examined using the Vivante vAnalyzer tool from the Vivante VDK.
 Information is either per-node (value: \code{"1"}) or per-graph (value: \code{"2"}).
-* {\code{VIV_VX_DEBUG_LEVEL}} Prints extra debug information.
-* {\code{VIV_MEMORY_PROFILE}} Only applies to CPU/GPU.
+
+* {\code{VIV_VX_DEBUG_LEVEL}}
+
+Prints extra debug information.
+
+* {\code{VIV_MEMORY_PROFILE}}
+
+Only applies to CPU/GPU.
 \enditems
 
 \secc Model Caching
 \begitems \style d
-* {\code{VIV_VX_ENABLE_CACHE_GRAPH_BINARY}} Enables saving of the compiled graph to disk with a hash so that the next time the same graph would be compiled, this \code{*.nb} file will be loaded instead. In addition to this the warmup time may take more than one inference\rfc{why?}.
-* {\code{VIV_VX_CACHE_BINARY_GRAPH_DIR}} Directory to save the cache files to.
+* {\code{VIV_VX_ENABLE_CACHE_GRAPH_BINARY}}
+
+Enables saving of the compiled graph to disk with a hash
+so that the next time the same graph would be compiled,
+this \code{*.nb} file will be loaded instead.
+In addition to this the documentations claims that
+warmup time may take more than one inference.
+
+* {\code{VIV_VX_CACHE_BINARY_GRAPH_DIR}}
+
+Directory to save the cache files to.
 \enditems
 
 \sec Power Modes
@@ -581,23 +900,29 @@ The NPU can be set to 4 different states,
 * {Idle} Clock speed lowered to $1/64^{th}$
 * {Suspend} Idle clock speed and requires some time to reach idle
 \enditems
-\rfc{Performance Counters for DMA Profiling}
+%% \rfc{Performance Counters for DMA Profiling}
 
-\sec Loading into Memory
-\secc Direct loading of images
+%% \sec Loading into Memory
+%% \secc Direct loading of images
+%% \rfc{TODO}
 
 \chap Frameworks
-\sec Kernel Support
-\rfc{NNAPI is from Android not the Kernel NNAPI of the same name: \urlnote{https://developer.android.com/ndk/guides/neuralnetworks/}}
+
+%% \sec Keras
+
 \sec LiteRT (Lite RunTime)
 
-\rfc{formerly TFLite}
+This project is closely related to tensorflow
+and acts as its ambassador for resource-constrained devices.
+Tensorflow is used to train, prepare, and debug the model,
+before it's deployed to a device
+where only a stripped down runtime is installed.
+As such it does not contain much beyond what is needed
+to run inference.
+Models need to be converted
+into the FlatBuffers tflite format before use\cite[LitertOverview].
 
-Models also need to be converted (and optimized)
-into the FlatBuffers tflite format before use
-\urlnote{https://ai.google.dev/edge/litert}.
-
-We must set an environment variable which libvx checks
+When running the library we must set an environment variable which \code{libvx} checks
 to see which device it should use, either NPU or GPU:
 
 \begtt
@@ -605,44 +930,113 @@ export USE_GPU_INFERENCE=0
 \endtt
 
 Next we must load the external dynamic library
-which we pass into the LiteRT interpreter:
+which we pass into the LiteRT interpreter: \ref[litert_delegate].
 
+\midinsert
+\label[litert_delegate]
 \begtt\hisyntax{python}
 import tflite_runtime.interpreter as tflite
 
 # load external delegate
-ext_delegate = [
+external_delegates = [
     tflite.load_delegate("/usr/lib/libvx_delegate.so", "")
 ]
 \endtt
+\caption/f Loading LiteRT delegate
+\endinsert
 
+Delegates are shims between the Tensorflow python library
+and the external system library acting as device driver,
+so even though we want to use \code{libOpenVX.so},
+we instead load the \code{libvx_delegate.so}
+library which links against it.
+
+\midinsert
+\label[litert_inter]
 \begtt\hisyntax{python}
-
 interpreter = tflite.Interpreter(
-model_path=args.model_file,
-experimental_delegates=ext_delegate,
-num_threads=args.num_threads)
-
-runner(x=np.array(range(10), dtype=np.float32))
+  model_path=args.model_file,
+  experimental_delegates=external_delegates,
+)
 \endtt
+\caption/f Create the LiteRT interpreter object
+\endinsert
+
+After creating the interpreter object with \ref[litert_inter]
+we can interact with it in one of two ways.
+Either we have a prepared calling convention called a signature
+inside the model and call that as in \ref[litert_signat]
+which directly returns an output tensor.
+
+\midinsert
+\label[litert_signat]
+\begtt \hisyntax{python}
+signature = model.get_signature_runner()
+signature(x=<tensor>)
+\endtt
+\caption/f LiteRT signature runner
+\endinsert
+
+Or we go about explicitly setting and reading
+each input and output.
+For this it is useful to know their properties,
+so we may call \code{model.get_input_details()}
+or \code{model.get_output_details()} respectively.
+These functions return lists of detail objects
+containing the shape, name and index.
+This index can be used to read or write tensors with \code{set_tensor} in \ref[litert_set_tensor].
+
+\midinsert
+\label[litert_set_tensor]
+\begtt \hisyntax{python}
+model.set_tensor(model.get_input_details()[0]['index'], input_data)
+model.get_tensor(model.get_output_details()[0]['index'])
+\endtt
+\caption/f LiteRT directly setting input tensors
+\endinsert
 
 \sec Tensor Virtual Machine (TVM)
-\nocite[ExtendingTensoWang2022]
-As the full name Apache TVM might suggest,
-this is an open-source framework built by Apache,
-to .
 
-According to \code{EXTRA_OECMAKE} and the fact that it links against tim-vx
+As the full name Apache TVM\cite[ExtendingTensoWang2022] might suggest,
+this is an open-source framework built by Apache
+in a similar vein to ONNX including their own
+IR called Relay that is supposed to allow
+optimizations to be shared between multiple target backends.
+
+It does not have its own format for files,
+opting to be able to import any of the other frameworks'.
+It does have the additional capability to compile
+down models into C++ libraries in the form
+of shared object files.
+
+According to the recipe's \code{EXTRA_OECMAKE} and the fact that it links against tim-vx
 in the tvm bitbake recipe,
 support for VSINPU should already be built in.
-\rfc{Use as ONNX backend?}
+
+The \code{tvm.relay.frontend} module allows us to load
+a model, from almost any format user in machine learning,
+using functions such as \code{from_keras()}, \code{from_onnx()},
+\code{from_paddle()} or \code{from_tflite()}.
+
+However merely trying to import the \code{tvm.relay} module
+throws an error concerning python not being able to find
+the scipy library.
+Scipy is not packaged by any of the standard NXP layers
+and didn't have a workable recipe that could be found
+before this went out of scope for this work.
+
+Another interesting property of TVM is that
+ONNX can use it as a backend directly.
+Strangely enough ONNX even when compiled with
+\code{-Donnxruntime_USE_TVM=ON}
+does not acknowledge TVM as a valid backend.
 
 \sec ONNX (Open Neural Network Exchange)
 
 Though originally authored by joint efforts of Facebook and Microsoft,
-\rfc{Source is wiki, find a better source: https://en.wikipedia.org/wiki/Open_Neural_Network_Exchange}
-this project has flourished into a widely supported open-source ecosystem.
-A comprehensive specification for models, formats, types, operators and
+this project has flourished into a widely supported open-source ecosystem
+\cite[WikiONNX, ONNX].
+It comprises a comprehensive specification for models, formats, types, operators and
 abstract data descriptions.
 It includes protobuf definitions of their \code{.onnx} model files.
 It used to support only inference,
@@ -650,10 +1044,11 @@ but training was added with ONNX IR spec version 7\cite[OpenNeuralNet].
 Models here are represented as either just a stateless
 inference function in the case of inference-only models,
 or may be extended with an initialization and a training
-method which may modify the state of internal stateful variables
+method which may modify internal stateful variables
 of the given model.
-ONNX also encodes block of operators that encode a more complex task,
-these may be substituted for builtins by the runtime based off of their name.\rfc{Was changed in IRv9}
+ONNX also encodes a block of operators that encode a more complex task,
+these may be substituted for builtins by the runtime based off
+of their name\fnote{Went through changes in IRv9}.
 The internal structure is a list of acyclically dependent topologically sorted nodes,
 each node providing name, metadata, i/o and the given operation performed.
 ONNX however does provide HOF-like operators that are applied
@@ -663,63 +1058,75 @@ These nodes are strung together as a pipeline each input being connected
 to a previously declared output of the same name.
 Each output name is unique since SSA is mandatory,
 verification tools for this and other properties are
-available from the creators of ONNX\rfc{SHOW}.
+available from the creators of ONNX.
 The last argument of some operators is marked as variadic,
 thus allowing as is traditional with
 regular languages to pass an arbitrary number of
 inputs/outputs to it,
 obviously respecting the minimum arity.
-\rfc{ONNX vs. ONNX-ML}
+%% \rfc{ONNX vs. ONNX-ML}
 These graphs are meant to be assembled programatically,
 however ONNX does provide a textual form of their files.
-
-ONNX requires all modules to be attributes of the class.
-
 
 \secc NPU backend
 
 Implementing a backend for ONNX is
-done by providing a Python wrapping the functionality.
+done by providing a Python shim wrapping the functionality
+as we have compiled in support for VSINPU,
+we can simply list it as our inference session provider
+and run inference as is shown in Snippet \ref[onnx_infer].
 
-After downloading onnxruntime from pip,
-I can use the available provider
+If ONNXruntime is downloaded from pip,
+we can use the available provider
 CPU and Azure.
 VSINPU is listed as known but unavailable.
-Activating it yields an error rather than
-a warning for Provider unsupported.
+Activating it yields an unavailable error
+so the ONNX we use must be from Yocto.
 
-\secc Running on NPU
-
+\midinsert
+\label[onnx_infer]
 \begtt\hisyntax{python}
 import onnxruntime
-session = onnxruntime.InferenceSession("model.onnx", providers = [ "VSINPUExecutionProvider" ])
-session.run(input_feed={"x": np.full(fill_value=[1.0], shape=(1,28,28), dtype=np.float32)}, output_names = ["add"])
+session = onnxruntime.InferenceSession(
+  "model.onnx",
+  providers = [ "VSINPUExecutionProvider" ]
+)
+session.run(
+  input_feed= {
+    "x": np.full(
+           fill_value=[1.0],
+           shape=(1,28,28),
+           dtype=np.float32,
+         )
+  },
+  output_names = ["add"],
+)
 outputs = session.run(None, {"input": inputTensor})
 \endtt
+\caption/f Running on NPU
+\endinsert
 
-NPU provider is added here\urlnote{https://github.com/microsoft/onnxruntime/blob/daf9565d1b550fd0d8149e8314bfce61d8df1d54/onnxruntime/core/providers/get_execution_providers.cc} line 89,
-listed by \code{onnxruntime.get_available_providers},
-yet then discarded when calling \urlnote{https://github.com/microsoft/onnxruntime/blob/daf9565d1b550fd0d8149e8314bfce61d8df1d54/onnxruntime/python/onnxruntime_pybind_state.cc} line 1238,
-in favour of the \code{EP Unknown Provider falling back to CPU} error.
-\rfc{I'd swear I had this working.}
+You may convert any torch model into ONNX.
+Snippet \ref[torch2onnx] shows how
+given a torch/tensorflow model one can export
+it into a onnx file.
 
-\secc Tooling
-
-\rfc{netron, zetane, tensor2onnx and such}
-
-\secc Converting torch models into ONNX
-\rfc{What exactly is "model" here?}
+\midinsert
+\label[torch2onnx]
 \begtt\hisyntax{python}
 torch.onnx.export(
-model,                                # model being run
-torch.randn(1, 28, 28),    # model input (or a tuple for multiple inputs)
-"fashion_mnist_model.onnx",           # where to save the model (can be a file or file-like object)
-input_names = ['input'],              # the model's input names
-output_names = ['output'])            # the model's output names
+  model, # model being run
+  torch.randn(1, 28, 28), # model input (or a tuple for multiple inputs)
+  "fashion_mnist_model.onnx", # where to save the model
+  input_names = ['input'], # the model's input names
+  output_names = ['output'], # the model's output names
+)
 \endtt
+\caption/f Exporting Torch to ONNX
+\endinsert
 
 \sec OpenCV
-
+\rfc{BIG TODO}
 \begtt
 cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/onnx/onnx_importer.cpp:1057: error: (-2:Unspecified error) in function 'handleNode'
 > Node [Conv@ai.onnx]:(onnx_node!node_Conv_0) parse error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/layers/layers_common.cpp:106: error: (-5:Bad argument) kernel_size (or kernel_h and kernel_w) not specified in function 'getKernelSize
@@ -747,7 +1154,7 @@ Which is the error for wrong output name.
 \code{m.forward([])} and \code{m.forward()}
 seem to both yield the same array,
 seems that if no outputs are specified,
-then implicitly it takes the one, \rfc{but which}.
+then implicitly it takes all.
 
 \begtt
 >>> m.getInputDetails()
@@ -756,99 +1163,146 @@ Traceback (most recent call last):
 cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/net_quantization.cpp:268: error: (-6:Unknown error code -6) Net isn't quantized in function 'getInputDetails'
 \endtt
 
-\sec The NXP eIQ environment
+\sec Unaddressed frameworks
 
-The NXP eIQ stack officially supports the following engines:
-\begitems
-* LiteRT (formerly known as TensorFlow Lite)
-* ONNX Runtime
-* PyTorch
-* OpenCV
-\enditems
-Of these only TensorFlow Lite supports the included NPU through the use of the VX delegate,
-so called as it uses the \OpenVX~ library.
+\secc The NXP eIQ environment
 
-\chap Building the NXP IMX layer
+The NXP eIQ stack officially supports, LiteRT, ONNX, PyTorch and OpenCV.
+Of these only LiteRT officially supports the included NPU.
+Due to the fact that it only calls the other libraries listed
+and that the environment itself
+is a large and unwieldy project,
+we opted to skip it in this work.
 
-Repo\urlnote{https://bugs.launchpad.net/lxml/+bug/2045435}
-Adding
-\begtt
-CFLAGS += '-fpermissive'
-or more specifically
-CFLAGS += "-Wno-error=incompatible-pointer-types
-\endtt
-to \code{conf/local.conf} fixes it.
-Optionally directly to the bbfiles of the problematic libraries,
-since editing the global \code{local.conf} seems to cause all
-artifacts to go out of date as it affects the entire tree,
-so using the specific files:
-\begitems
-* \code{python3-lxml_5.0.0.bb}
-* \code{expect_5.45.4.bb}
-\enditems
+\secc Android NNAPI
 
-I think, that should only rebuild a subset.
+Android provides a direct official API
+for use in Machine Learning acceleration\cite[AndroidNNAPI].
+It is however only exclusively available on Android
+which requires negotiating with NXP
+for an image and is to be deprecated in the future
+in favour of LiteRT.
+The Linux Kernel also has something called the
+NNAPI, however that is completely unrelated.
 
-Nope, use a layer.
+\secc Paddle Paddle
+\rfc{BIG TODO}
 
-bitbake -c menuconfig virtual/kernel
+\sec \OpenVX~
 
+\OpenVX~is a standard hardware API that can be
+implemented by hardware vendors of
+hardware accelerators
+and exposed as a C API to users \cite[OpenvxPortab2011].
+The Khronos group that
+manages the \OpenVX~specification
+only describes an abstract machine
+and certain operators with defined semantics.
+The implementation of the operators
+in the means of hardware
+is up to the vendor,
+and the specification aims to be written
+in a way as to allow as much optimization
+as possible.
+When we spoke so far of \code{libOpenVX.so},
+that is \VeriSilicon{}'s pre-compiled
+implementation of the \OpenVX~API.
+\OpenVX~officially aims at vision processing specifically,
+however there are Neural Network extensions to allow
+using the same pipeline to also accelerate
+machine learning operations utilizing the tensor
+structure from the full \OpenVX~v1.2 Spec,
+and extending it with new operators such as
+\code{vxActivationLayer},
+\code{vxConvolutionLayer},
+\code{vxFullyConnectedLayer},
+\code{vxSoftmaxLayer} and
+more\cite[OpenVXNNE].
 
-Nope, just use a Docker container,
-for example \code{gmacario/build-yocto}.
-\begtt
-apt install lz4 zstd
-\endtt
-\rfc{Files created under \code{build/tmp/work/imx8mpevk-poky-linux/imx-image-full/1.0/deploy-imx-image-full-image-complete}}
-
-Using for second build
-\code{docker run --rm -it -v /DISKB/cl-local/scarthgap.TQ.ARM.BSP.0001:/src --userns=keep-id 97bf1c8e3645}
-
-
-\chap \OpenVX~
-
-\VeriSilicon~ships their pre-compiled
-shared library \code{libOpenVX.so} with TIM-VX.
-
-\urlnote{https://www.nxp.com/docs/en/user-guide/IMX-MACHINE-LEARNING-UG.pdf}
-
-\begitems
-* APIs for Python and C++
-* VX (i.MX 8 Series) / Ethos-U (i.MX 93) / Neutron (i.MX 95) Delegate
-\enditems
+Known Implementors of this API are:
 
 \begitems \style d
-* {VX Delegate} Connects TFLite to the \OpenVX~ API via TIM-VX
-* {\OpenVX~ API} Callable API implemented by hardware vendors\cite[OpenvxPortab2011]
-* {TIM-VX} Verisilicon Tensor Interface Module\urlnote{https://github.com/VeriSilicon/TIM-VX}
-(used by the VX delegate)
-\enditems
+* {VeriSilicon}
 
-\sec Implementors
-\begitems
-* VeriSilicon/tflite-vx-delegate
+The \code{libOpenVX.so} object all our libraries link against.
 
-Requires TIM-VX which is linked against the \VeriSilicon~\OpenVX~SDK\rfc{Is this proprietary or not}
+* {KhronosGroup/OpenVX-sample-impl}
 
-* KhronosGroup/OpenVX-sample-impl
+Only truly open-source implementation,
+however it is supposedly very ad-hoc,
+slowly implemented,
+and emulates the given operators on
+CPU or related using OpenCL \cite[KhronosgroupOp2024].
 
-Only actually OSS implementation, however it is supposedly very ad-hoc and slowly implemented
-
-* TexasInstruments/tiovx
+* {TexasInstruments/tiovx}
 
 Source available but only authorized for use on TI hardware
 \enditems
 
-\rfc{Relation between openvx and opencl}
+However only the relevant vendor makes sense
+to use as it is tightly coupled to the given device
+that is to be controlled with it.
+
+\OpenVX~still uses a graph abstraction,
+however the operations are far too low-level
+to be convenient and useful for the purposes
+of general purpose machine learning jobs.
+Especially since they do not
+interoperate with existing well known
+formats from the public machine learning ecosystem.
+Which is why we opted to rather
+focus on relevant and convenient libraries
+that wrap \OpenVX~instead of calling it directly.
 
 \chap Speedup
 \sec Theoretical advantages
 \sec Benchmarking Practical Results
 
+Running the same model under LiteRT and ONNX,
+yields interestingly different results for CPU
+speed and NPU Warmup, which makes sense
+as even though the models implement the same
+structure they have different representations and
+so may be compiled very differently.
+Seems that once the model is up and running though
+the NPU has the same performance under both.
+
+\midinsert
+\clabel[perf]{Performance Metrics}
+\ctable{lrrr}{
+Framework & CPU & NPU Warmup & NPU \crl
+ONNX & 50ms & 16ms & 4ms \cr
+LiteRT & 132ms & 380ms & 3ms
+}
+\caption/t mobilenet_v1_1.0_224_quant Performance Metrics
+\endinsert
+
+The NPU is optimized for specific tasks
+so certain operands may end up just being run
+on the CPU even if the NPU is set as the target,
+only emitting a Warning notice to stderr.
+
+In addition, an atypical model may even run slower
+on NPU due to the various overheads if
+it is not something the machinery knows how to handle,
+bumping a 52ms runtime on the CPU up to
+a consistent 200ms on the NPU.
+I reiterate,
+enabling hardware acceleration slowed down
+our inference to 25\% of what it achieved on just CPU.
+
 \sec Device Tensors
 .\urlnote{https://onnxruntime.ai/docs/performance/device-tensor.html}
 
 \sec Startup slowdowns
+
+This is apparent when running the C++ example where
+measuring the entire program's runtime
+results in 0.2 seconds on CPU and
+3.4 seconds when running on NPU
+even though the internal timer
+measuring pure inference time shows
+that NPU speeds up inference from 35ms to 3ms.
 
 \secc Dynamic loading of Libraries
 
@@ -857,9 +1311,11 @@ using either \code{ONNX} or \code{LiteRT},
 the case always is that the interfacing library
 must be loaded dynamically.
 Loading may take up a significant amount of time,
-in one experiment after profiling with \code{perf}
-shows 16.28\% of the runtime taken up by \code{do_lookup_x} from \code{ld-linux.so}.
-\rfc{Be more specific about how long the total time took and what ran}
+in one experiment the Python profiler
+shows 7\% of the runtime taken up by \code{do_lookup_x} from \code{ld-linux.so}.
+
+\secc Tiling and Compilation
+.\rfc{BIG TODO}
 
 \secc Bus
 
@@ -867,15 +1323,103 @@ Since the NPU acts as a completely separate device from the
 standard SOC's CPU and memory,
 even having its own clock,
 we must transfer the model and input parameters
-over a AXI/AHB\rfc{Specify what that is} bus
+over a AXI/AHB bus
 and that takes time.
 Behind that Bus lies a Memory Controller,
 scheduler and more which all work together to slow down the call
 especially initially.
 
-\chap Demonstrations
+\glos {AXI}{Advanced eXtensible Interface}
+\glos {AHB}{Advanced High-performance Bus}
+
+\secc NPU Clogging
+
+During tests it often happens that if the input data
+is too large, or the NPU is otherwise mishandled
+then all further requests to it simply
+block forever.
+I am sure the NPU can be reset,
+however we opted to just restart the device for now
+whenever this occurs,
+sometimes having to hard-kill all processes that
+are working with the NPU as they even block system restarts.
 
 \chap Suggesting PikeOS integration
+
+We see that the most integral part of
+porting this ecosystem to a given OS,
+would be to get TIM-VX working as
+that is targeted by all the other
+libraries.
+The hard part will be porting libOpenVX
+as that is closed-source and shipped as a prebuilt
+binary artefact.
+This shared object binary can of course be patched
+and edited to work around some issues,
+however there is little that can be done
+if the library does not work.
+Luckily libOpenVX has very few runtime dependencies,
+apart from the standard set of linux libraries
+it requires libVSC, libGAL, libArchModelSw and libNNArchPerf,
+all of which are also shipped as binary blobs.
+Only shipping libOpenVX does not lessen the load substantially,
+as all of these dependencies are also required by it.
+
+Once that is in place TVM and OpenCV support extrernal
+file types,
+while ONNX, Keras and TensorFlow
+provide tooling to convert and
+often have built-in facilities to work with,
+import and export
+all of their respective formats.
+And so supporting one of these well should
+suffice for most applications.
+
+All our mentioned frameworks have multiple sets of bindings,
+primarily always Python and C++, along with a mix of other languages.
+For performance sensitive applications it would be beneficial
+to support the C++ API while Python will depend on
+whether clients wish to prototype their applications
+on the device or if the workflow
+of training on external hardware and only running on the device
+is sufficient.
+
+\chap Conclusion
+
+We set out to perform reconaissance of
+hardware acceleration
+in the context of machine learning on embedded devices.
+Much of the author's time was spent
+on familiarization with the bitbake Yocto build system,
+BSPs,
+flashing to the EVK,
+navigating hardware vendor documentation,
+and other themes completely tangential
+to the problems we set out to address.
+Despite that, we identified the primary
+point of ingress for controlling the NPU,
+several libraries that support it
+even outside the NXP specification.
+
+We either compiled these libraries with NPU support,
+recorded what steps were done to do so
+and afterwards described how to specify to the library
+that it should utilize the NPU.
+Or in the cases where a roadblock was hit
+we described what the next step would
+be in getting it to work.
+
+The libraries were benchmarked on CPU and NPU,
+concluding that in terms of raw NPU
+inference perforance on the same model
+their differences are negligible.
+
+Finally we outlined which libraries are relevant
+for PikeOS to claim NPU support
+and briefly discussed from an outside perspective
+how that might be done 
+
+\glos {EVK}{Evaluation Kit}
 
 \app Glossary
 \glos {NBG}{Network Binary Graph}
@@ -887,253 +1431,43 @@ especially initially.
 \makeglos
 
 \bibchap
-\usebib/c (iso690) Thesis
+\usebib/c (iso690) thesis
 
-\app Attempts and scratchpad
-
-\sec sudo bmaptool copy ~/cl-local/images/imx8mpevk/imx-image-full-imx8mpevk.rootfs.wic.zst /dev/mmcblk0
-
-Did not connect at all
-
-\sec sudo dd if=sdimagenxpi8mp.img.bkp of=/dev/mmcblk0 status=progress
-
-Works, but doesn't boot `run mmcboot` provides a kernel error.
-
-One of the three buttons is reset.
-Left one, closest to V59 mark.
-
-=> run mmcboot
-
-
-bootd     - boot default, i.e., run 'bootcmd'
-bootefi   - Boots an EFI payload from memory
-bootelf   - Boot from an ELF image in memory
-booti     - boot Linux kernel 'Image' format from memory
-bootm     - boot application image from memory
-bootp     - boot image via network using BOOTP/TFTP protocol
-bootvx    - Boot vxWorks from an ELF image
-
-Run sudo uuu -v -b sd uuu.auto-imx8mpevk
-while switches in 0b0001 and pressing Reset.
-
-sudo uuu -b emmc_all ./images/imx-boot-tqma8mpxl-mba8mpxl-mfgtool.bin-flash_spl_uboot ./images/tq-image-weston-debug-tqma8mpxl-mba8mpxl.rootfs.wic
-
-Overlay
-Must update some layers from BSP to NXP-IMX manifest version.
-meta-freescale due to...
-poky due to gstreamer version mismatch, meta-imx requires >=1.24.0,
-but the bsp provided 1.22.5..
-
-Don't forget to actually start booting i.e. select memory size, etc.
-
-\rfc{The NPU can send CPU interrupts, these are set using the driver and cannot in fact be understood without the driver since the NPU and driver both assign arbitrary meaning to the given bits of the interrupt info register.}
-
-Root of all property \code{./meta-freescale/recipes-graphics/imx-gpu-viv/imx-gpu-viv-6.inc}
-
-\sec OPENCV Compilation
-
-Compiling with external TIM-VX lib,
-which is strongly advised against,
-yields a segfaulting library.
-
-\begtt\hisyntax{python}
->>> cv.setUseOpenVX(True)
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/core/src/ovx.cpp:101: error: (-215:Assertion failed) !flag && "OpenVX support isn't enabled at compile time" in function 'setUseOpenVX'
-
->>> cv.useOpenVX()
-False
-
-self._model = cv.FaceDetectorYN.create(
-            model=self._modelPath,
-            config="",
-            input_size=self._inputSize,
-            score_threshold=self._confThreshold,
-            nms_threshold=self._nmsThreshold,
-            top_k=self._topK,
-            backend_id=self._backendId,
-            target_id=self._targetId)
-	    # Segfaulted
-\endtt
-.\urlnote{https://github.com/opencv/opencv/wiki/TIM-VX-Backend-For-Running-OpenCV-On-NPU}
-
-Now trying to compile TIM-VX directly in OpenCV,
+\app Build configuration
+\label[buildconf]
 
 \begtt
-libgfortran was skipped: libgfortran needs fortran support to be enabled in the compiler
-external-arm-toolchain PROVIDES libgfortran but was skipped: External ARM toolchain not configured (EAT_VER_MAIN not set).
-\endtt
-
-Apparently I need an external ARM toolchain such as Linaro.
-
-\rfc{Does the TIM-VX driver even actually use the NPU?
-It is universal after all.
-With ONNX it is VSINPU so we can be quite sure,
-LiteRT as well cause that is official,
-OpenCV sets the target as NPU.}
-
-
-It is strange that the NPU either finishes absolutely immediately,
-or never finishes at all.
-Even with smaller ones afterwards, perhaps the pipeline is clogged?
-
-
-LiteRT seems to freeze at about 20000x2000 or so.
-Cannot operate until restart
-
-\begtt
-2025-03-30 23:14:39.310737248 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) aten_pixel_shuffle  to cpu.
-2025-03-30 23:14:39.313027340 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) Shape  to cpu.
-2025-03-30 23:14:39.313115214 [W:onnxruntime:Default, base_op_builder.cc:138 HasSupportedInputOutputsImpl] Concat has unsupported input type : tensor(int64)
-2025-03-30 23:14:39.313155463 [W:onnxruntime:Default, base_op_builder.cc:105 HasSupportedInputOutputs] Dynamic shape is not supported for now, for output:_inlfunc_aten_pixel_shuffle_reshaped_self
-2025-03-30 23:14:39.313187213 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) DepthToSpace  to cpu.
-2025-03-30 23:14:39.313213337 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) Shape  to cpu.
-2025-03-30 23:14:39.313256337 [W:onnxruntime:Default, base_op_builder.cc:138 HasSupportedInputOutputsImpl] Concat has unsupported input type : tensor(int64)
-2025-03-30 23:14:39.313292836 [W:onnxruntime:Default, base_op_builder.cc:56 operator()] Dynamic shape is not supported for now, for input:_inlfunc_aten_pixel_shuffle_depth_to_space
-2025-03-30 23:14:39.324987167 [W:onnxruntime:Default, vsinpu_ep_graph.cc:83 SupportedOp] Fallback unsupported op (node_unit) DepthToSpace  to cpu.
-2025-03-30 23:14:39.325322787 [W:onnxruntime:Default, vsinpu_execution_provider.cc:170 GetCapability] VSINPUExecutionProvider::GetCapability, number of partitions supported by VSINPU: 2; number of nodes in the graph: 10; number of nodes supported by VSINPU: 9
-\endtt
-.\rfc{Gather information on specifics of supported ops and sizes before proceeding}
-.\rfc{In another instance RAM can overflow if the network is too large, however it must be exceedingly so.}
-.\rfc{Visualizations\urlnote{https://netron.app/}}
-
-\begtt
-Samples: 20K of event 'cycles:P', Event count (approx.): 8246705352
-Overhead  Command  Shared Object                                       Symbol
-   7.98%  python3  ld-linux-aarch64.so.1                               [.] do_lookup_x                                                                                                         ◆
-   6.47%  python3  libOpenVX.so.1.3.0                                  [.] fillinKernelBufferV8Huffman                                                                                         ▒
-   5.58%  python3  libm.so.6                                           [.] __ceilf                                                                                                             ▒
-   5.46%  python3  libOpenVX.so.1.3.0                                  [.] writeBits                                                                                                           ▒
-   3.64%  python3  libOpenVX.so.1.3.0                                  [.] OutputAt                                                                                                            ▒
-   3.48%  python3  libOpenVX.so.1.3.0                                  [.] calcKernelSizeV8Huffman                                                                                             ▒
-   3.30%  python3  libc.so.6                                           [.] __memcpy_generic                                                                                                    ▒
-   3.08%  python3  libtim-vx.so                                        [.] vsi_nn_Transpose                                                                                                    ▒
-   2.28%  python3  libOpenVX.so.1.3.0                                  [.] calculateWeightNonZeroRatio                                                                                         ▒
-   1.96%  python3  libNNArchPerf.so                                    [.] 0x00000000000024cc                                                                                                  ▒
-   1.92%  python3  libNNArchPerf.so                                    [.] 0x00000000000024c4                                                                                                  ▒
-   1.85%  python3  libpython3.12.so.1.0                                [.] _PyEval_EvalFrameDefault                                                                                            ▒
-   1.51%  python3  libc.so.6                                           [.] __memset_zva64                                                                                                      ▒
-   1.46%  python3  libNNArchPerf.so                                    [.] 0x00000000000024e0                                                                                                  ▒
-   1.36%  python3  libOpenVX.so.1.3.0                                  [.] fillinTPKernelBufferHuffman                                                                                         ▒
-   1.32%  python3  libOpenVX.so.1.3.0                                  [.] calcNonZeroCountV8Huffman                                                                                           ▒
-   1.29%  python3  libOpenVX.so.1.3.0                                  [.] reorderKernelBufferV8HuffmanI8U8                                                                                    ▒
-   1.02%  python3  libNNArchPerf.so                                    [.] ceilf@plt                                                                                                           ▒
-   0.90%  python3  libNNArchPerf.so                                    [.] 0x00000000000024c0                                                                                                  ▒
-   0.84%  python3  libOpenVX.so.1.3.0                                  [.] analysisKernelStreamForV8Huffman                                                                                    ▒
-   0.73%  python3  ld-linux-aarch64.so.1                               [.] _dl_relocate_object                                                                                                 ▒
-   0.65%  python3  ld-linux-aarch64.so.1                               [.] _dl_lookup_symbol_x                                                                                                 ▒
-   0.63%  python3  libOpenVX.so.1.3.0                                  [.] analysisTPStreamForHuffman                                                                                          ▒
-   0.59%  python3  [kernel.kallsyms]                                   [k] _raw_spin_unlock_irqrestore                                                                                         ▒
-   0.52%  python3  libpython3.12.so.1.0                                [.] 0x00000000002c9078                                                                                                  ▒
-   0.50%  python3  libNNArchPerf.so                                    [.] 0x00000000000024b8                                                                                                  ▒
-   0.47%  python3  libNNArchPerf.so                                    [.] 0x00000000000024a8                                                                                                  ▒
-   0.46%  python3  libNNArchPerf.so                                    [.] 0x00000000000024b0                                                                                                  ▒
-   0.45%  python3  libNNArchPerf.so                                    [.] 0x00000000000024d4                                                                                                  ▒
-   0.38%  python3  libNNArchPerf.so                                    [.] 0x00000000000024d8                                                                                                  ▒
-   0.36%  python3  libpython3.12.so.1.0                                [.] 0x00000000002c88a8                                                                                                  ▒
-   0.35%  python3  libOpenVX.so.1.3.0                                  [.] writeBits@plt                                                                                                       ▒
-   0.33%  python3  libOpenVX.so.1.3.0                                  [.] minus8bitUint                                                                                                       ▒
-   0.33%  python3  libOpenVX.so.1.3.0                                  [.] vxoContext_RemoveObject                                                                                             ▒
-   0.29%  python3  libc.so.6                                           [.] _int_malloc                                                                                                         ▒
-   0.29%  python3  libpython3.12.so.1.0                                [.] _PyType_Lookup                                                                                                      ▒
-   0.27%  python3  libOpenVX.so.1.3.0                                  [.] reorderTPKernelBufferHuffman                                                                                        ▒
-   0.26%  python3  ld-linux-aarch64.so.1                               [.] check_match                                                                                                         ▒
-   0.25%  python3  libpython3.12.so.1.0                                [.] 0x00000000002c93f8                                                                                                  ▒
-   0.25%  python3  ld-linux-aarch64.so.1                               [.] strcmp                                                                                                              ▒
-   0.25%  python3  libNNArchPerf.so                                    [.] 0x0000000000001e00                                                                                                  ▒
-   0.24%  python3  [kernel.kallsyms]                                   [k] __pi_clear_page                                                                                                     ▒
-   0.24%  python3  libc.so.6                                           [.] malloc                                                                                                              ▒
-   0.24%  python3  libc.so.6                                           [.] _int_free                                                                                                           ▒
-   0.23%  python3  libOpenVX.so.1.3.0                                  [.] vxoContext_GetUserStructIndex                                                                                       ▒
-   0.21%  python3  ld-linux-aarch64.so.1                               [.] _dl_tlsdesc_return                                                                                                  ▒
-   0.20%  python3  libc.so.6                                           [.] malloc_consolidate                                                                                                  ▒
-   0.20%  python3  libNNArchPerf.so                                    [.] APMCalcNNCycleCountBandWidth                                                                                        ▒
-   0.16%  python3  [kernel.kallsyms]                                   [k] zap_pte_range                                                                                                       ▒
-   0.15%  python3  libc.so.6                                           [.] cfree@GLIBC_2.17
-\endtt
-
-Python with and without Delegate:
-\begtt
-INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
-Warm-up time: 137.6 ms
-
-Inference time: 132.6 ms
-
-0.870588: military uniform
-0.031373: Windsor tie
-0.011765: mortarboard
-0.007843: bow tie
-0.007843: bulletproof vest
-
-real    0m1.436s
-user    0m1.290s
-sys     0m0.126s
-
-
-Loading external delegate from /usr/lib/libvx_delegate.so with args: {}
-INFO: Vx delegate: allowed_cache_mode set to 0.
-INFO: Vx delegate: device num set to 0.
-INFO: Vx delegate: allowed_builtin_code set to 0.
-INFO: Vx delegate: error_during_init set to 0.
-INFO: Vx delegate: error_during_prepare set to 0.
-INFO: Vx delegate: error_during_invoke set to 0.
-W [HandleLayoutInfer:332]Op 162: default layout inference pass.
-Warm-up time: 3373.6 ms
-
-Inference time: 3.2 ms
-
-0.870588: military uniform
-0.031373: Windsor tie
-0.011765: mortarboard
-0.007843: bow tie
-0.007843: bulletproof vest
-
-real    0m4.575s
-user    0m4.254s
-sys     0m0.263s
-\endtt
-
-C++ with and without Delegate:
-\begtt
-INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
-INFO: resolved reporter
-INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
-INFO: invoked
-INFO: average time: 34.498 ms
-INFO: 0.768627: 653 military uniform
-INFO: 0.105882: 907 Windsor tie
-INFO: 0.0196078: 458 bow tie
-INFO: 0.0117647: 466 bulletproof vest
-INFO: 0.00784314: 835 suit
-
-real    0m0.221s
-user    0m0.511s
-sys     0m0.024s
-
-
-INFO: Loaded model mobilenet_v1_1.0_224_quant.tflite
-INFO: resolved reporter
-INFO: Vx delegate: allowed_cache_mode set to 0.
-INFO: Vx delegate: device num set to 0.
-INFO: Vx delegate: allowed_builtin_code set to 0.
-INFO: Vx delegate: error_during_init set to 0.
-INFO: Vx delegate: error_during_prepare set to 0.
-INFO: Vx delegate: error_during_invoke set to 0.
-INFO: EXTERNAL delegate created.
-INFO: Applied EXTERNAL delegate.
-W [HandleLayoutInfer:332]Op 162: default layout inference pass.
-INFO: invoked
-INFO: average time: 3.155 ms
-INFO: 0.768627: 653 military uniform
-INFO: 0.105882: 907 Windsor tie
-INFO: 0.0196078: 458 bow tie
-INFO: 0.0117647: 466 bulletproof vest
-INFO: 0.00784314: 835 suit
-
-real    0m3.460s
-user    0m3.267s
-sys     0m0.179s
+Build Configuration:
+BB_VERSION           = "2.8.0"
+BUILD_SYS            = "x86_64-linux"
+NATIVELSBSTRING      = "universal"
+TARGET_SYS           = "aarch64-poky-linux"
+MACHINE              = "tqma8mpxl-mba8mpxl"
+DISTRO               = "fsl-imx-wayland"
+DISTRO_VERSION       = "6.6-scarthgap"
+TUNE_FEATURES        = "aarch64 armv8a crc crypto"
+TARGET_FPU           = ""
+meta
+meta-poky            = "HEAD:200d12b6a58ad961d60a7774ca0f7a9d29498724"
+meta-oe
+meta-python
+meta-multimedia      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
+meta-freescale       = "HEAD:0627128b341cfb2bef7a0832ce8cac0ce1127f13"
+meta-qt6             = "HEAD:586a6cb5aec755803a3be3cec359baafe89d6432"
+meta-tq              = "HEAD:257b8c0b4b6df3bb27fb69bd2312dd254c73fed3"
+meta-imx-ml
+meta-imx-sdk
+meta-imx-bsp         = "HEAD:219f6d04a4c339eb6f2dc626f944bbdf9a716ff5"
+meta-arm
+meta-arm-toolchain   = "HEAD:950a4afce46a359def2958bd9ae33fc08ff9bb0d"
+meta-freescale-distro = "HEAD:b9d6a5d9931922558046d230c1f5f4ef6ee72345"
+meta-overlay         = "<unknown>:<unknown>"
+meta-virtualization  = "HEAD:6f3c1d8f90947408a6587be222fec575a1ca5195"
+meta-filesystems
+meta-networking      = "HEAD:72018ca1b1a471226917e8246e8bbf9a374ccf97"
+meta-tpm
+meta-parsec          = "HEAD:459d837338ca230254baa2994f870bf6eb9d0139"
+meta-clang           = "HEAD:2b7433611d80f6d0ee1b04156fa91fc73d3c2665"
 \endtt
 
 \bye
