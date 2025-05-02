@@ -16,6 +16,16 @@
 \def\textemdash{-}
 
 \totf
+
+\def\insertassignmentpage[#1]{
+        \nopagenumbers
+        \vbox to0pt{\vskip-25mm\centerline{\picparams={#1} \inspic zacekmi2-assignment.pdf }\vss}
+        \break
+}
+
+\insertassignmentpage[page1]
+\insertassignmentpage[page2]
+
 \makefront
 
 \chap Introduction
