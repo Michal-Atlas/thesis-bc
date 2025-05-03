@@ -116,34 +116,11 @@ Of these only the ones marked with \code{*} are used by \OpenVX{}.
 
 \chap File Formats
 
-\sec Model File Properties
-
-\secc Model conversion
-
-Apparently there are ways to compile a model for a specific NPU,
-even multiple models so they efficiently live together
-in memory\cite[CoralEdgeTpuCompiler].\rfc{BIG TODO}
-
-TensorFlow is used in preparation and then compiled to a lighter LiteRT format\cite[LitertOverview].
-
-\secc Quantization
-
-Since the NPU itself is built for
-all of 8/16/32-bit wide floats \cite[IMxMachineLeLfRe2024]
-and different sizes of integers,
-we may wish to lessen the load and speed-up the inference
-by opting to sacrifice the precision of the result
-and instead of running the entire process
-with F32, we use INT8,
-according to \cite[PyTorchQuant]
-this may lead to the operations being implemented 2 to 4
-times faster with integers.
-
 \sec Keras / HDF5
 
 Keras is a library released in 2010
 as part of a research effort,
-originally at Alphabet Inc\cite[KerasWikiped].
+originally at Alphabet\cite[KerasWikiped].
 Its relation to TensorFlow will be apparent later.
 Keras' currently used filetype \code{.keras} is a wrapper format consisting of
 a ZIP-archive containing an \code{.h5} file
@@ -359,7 +336,7 @@ The repositories are initialized from
 an Extensible Markup Language (XML)
 file hosted in an arbitrary repository,
 which contains a set of remotes and
-``projects''\rfc{TODO fix english quotes} (repositories)
+``projects'' (repositories)
 that will be fetched into the final checkout.
 
 \glos {XML}{Extensible Markup Language}
@@ -636,11 +613,26 @@ This compiles an image,
 however OpenCV still throws an error when calling
 \code{cv.setUserOpenVX(True)} claiming
 it is not compiled with the given support
-and when run anyways,
+and when run anyways with snippet \label[cv2py],
 the speeds are identical for both
 set backends,
 however the speed seems suspiciously high
 (in magnitude of hundreds of microseconds).
+
+\midinsert
+\label[cv2py]
+\begtt\hisyntax{python}
+import cv2 as cv
+m = cv.dnn.readNet('model.onnx')
+m.setPreferable
+m.setPreferableBackend(cv.dnn.DNN_BACKEND_TIMVX)
+m.setPreferableTarget(cv.dnn.DNN_TARGET_NPU)
+import numpy as np
+m.setInput(np.full(fill_value=[1.0], shape=(1,28,28)))
+m.forward()
+\endtt
+\caption/f Attempt to run OpenCV DNN on NPU
+\endinsert
 
 \chap The Graph Workflow
 
@@ -941,10 +933,12 @@ care should be given to verify
 that all required information is intact.
 
 \chap Hardware Specifics
-
+\rfc{Hardware BIG TODO}
 \sec NPU Contents
 
 This entire section references mainly \cite[IMx8mPlusAp].
+Most importantly the NPU implements the \OpenVX~ API,
+and so can be controlled using \VeriSilicon~\code{libOpenVX} implementation.
 
 \secc Parallel Processing Unit (PPU)
 
@@ -972,9 +966,6 @@ Region Proposal Support & Yes \cr
 
 The NPU can send CPU interrupts, these are set using the driver and cannot in fact be understood without the driver since the NPU and driver both assign arbitrary meaning to the given bits of the interrupt info register.
 
-\secc OpenVX Hardware Support
-.\rfc{BIG TODO}
-
 \sec Configuration Environment Variables read by TIM-VX
 
 In the i.MX Machine Learning User's Guide \cite[IMxMachineLeLfRe2024] section 6.1.2,
@@ -987,6 +978,7 @@ which to use, ``1'' for GPU or ``0'' for NPU.
 \enditems
 
 \secc Profiling
+
 \begitems \style d
 * {\code{CNN_PERF}}
 
@@ -995,7 +987,7 @@ Requires \code{VIV_VX_DEBUG_LEVEL=1} and implied by \code{VIV_VX_PROFILE}.
 
 * {\code{NN_EXT_SHOW_PERF}}
 
-Shows the details of how the compiler determines performance.
+Shows the details on how the compiler determines performance.
 
 * {\code{VIV_VX_PROFILE}}
 
@@ -1037,10 +1029,6 @@ The NPU can be set to 4 different states,
 * {Suspend} Idle clock speed and requires some time to reach idle
 \enditems
 %% \rfc{Performance Counters for DMA Profiling}
-
-%% \sec Loading into Memory
-%% \secc Direct loading of images
-%% \rfc{TODO}
 
 \chap Frameworks
 
@@ -1261,44 +1249,6 @@ torch.onnx.export(
 \caption/f Exporting Torch to ONNX
 \endinsert
 
-\sec OpenCV
-\rfc{BIG TODO}
-\begtt
-cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/onnx/onnx_importer.cpp:1057: error: (-2:Unspecified error) in function 'handleNode'
-> Node [Conv@ai.onnx]:(onnx_node!node_Conv_0) parse error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/layers/layers_common.cpp:106: error: (-5:Bad argument) kernel_size (or kernel_h and kernel_w) not specified in function 'getKernelSize
-\endtt
-
-\begtt\hisyntax{python}
-import cv2 as cv
-m = cv.dnn.readNet('model.onnx')
-m.setPreferable
-m.setPreferableBackend(cv.dnn.DNN_BACKEND_TIMVX)
-m.setPreferableTarget(cv.dnn.DNN_TARGET_NPU)
-import numpy as np
-m.setInput(np.full(fill_value=[1.0], shape=(1,28,28)))
-m.forward(["output"])
-\endtt
-
-Yields:
-\begtt
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/net_impl.cpp:279: error: (-204:Requested object was not found) Layer with requested id=-1 not found in function 'getLayerData'
-\endtt
-Which is the error for wrong output name.
-
-\code{m.forward([])} and \code{m.forward()}
-seem to both yield the same array,
-seems that if no outputs are specified,
-then implicitly it takes all.
-
-\begtt
->>> m.getInputDetails()
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-cv2.error: OpenCV(4.10.0) /usr/src/debug/opencv/4.10.0.imx/modules/dnn/src/net_quantization.cpp:268: error: (-6:Unknown error code -6) Net isn't quantized in function 'getInputDetails'
-\endtt
-
 \sec Unaddressed frameworks
 
 \secc The NXP eIQ environment
@@ -1322,12 +1272,19 @@ The Linux Kernel also has something called the
 NNAPI, however that is completely unrelated.
 
 \secc Paddle Paddle
-\rfc{BIG TODO}
+
+A popular Chinese framework for machine vision,
+it seems well-documented but much of the
+community and so documentation is
+mandarin\cite[GithubPaddle].
+It is not mentioned by NXP in documentation,
+however it is marked as having supported
+for TIM-VX, so may be explored in the future.
 
 \chap Performance
 
 \sec Theoretical advantages
-.\rfc{BIG TODO?}
+.\rfc{Theory BIG TODO?}
 
 \sec Startup
 \label[startup]
@@ -1359,6 +1316,25 @@ tens of seconds depending on model size.
 After this first inference all subsequent inferences
 should be a consistent and much higher speed,
 as long as that model's handle is kept\cite[AN12964].
+Multiple models can be kept in memory
+at once,
+each needs its own warmup phase and then
+as long as they fit,
+they can be kept and used at will
+intermitenly.
+
+Some frameworks offer a way to compile
+multiple models so they efficiently live together
+in memory\cite[CoralEdgeTpuCompiler].
+This might of course cause some models
+to have most of the cache memory to themselves,
+while leaving the rest with very little,
+however it prioritizes the models
+based on the user's preference
+so it is a tradeoff of note
+having to expulse the cache every time
+a model is switched and may at times be faster
+even considering that.
 
 The abstract graph built by the user
 is analyzed by the implementation
@@ -1384,6 +1360,19 @@ This is done automatically by the implementation
 however shows up often in performance logs.
 The DMA controller then requests
 and processes tiles as the NPU requires.
+
+\secc Quantization
+
+Since the NPU itself is built for
+all of 8/16/32-bit wide floats \cite[IMxMachineLeLfRe2024]
+and different sizes of integers,
+we may wish to lessen the load and speed-up the inference
+by opting to sacrifice the precision of the result
+and instead of running the entire process
+with F32, we use INT8,
+according to \cite[PyTorchQuant]
+this may lead to the operations being implemented 2 to 4
+times faster with integers.
 
 \secc Dynamic loading of Libraries
 
