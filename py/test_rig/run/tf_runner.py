@@ -45,11 +45,11 @@ class TFRunner(Runner):
     def load_data(self):
         input_details = self.model.get_input_details()
         for input_detail in input_details:
+            print(f"===> {input_detail['dtype']}")
             shape = input_detail['shape']
             size = (BATCH_SIZE, *shape[1:]) if self.reshape else shape
-            input_data = np.full(fill_value=[1e3], shape=size,
-                                 # dtype=np.uint8 #INPUT_TYPE_NP
-                                 dtype=self.dtype
+            input_data = np.full(fill_value=[42], shape=size,
+                                 dtype=input_detail['dtype']
                                  )
             if self.reshape:
                 self.model.resize_tensor_input(input_detail['index'], input_data.shape)

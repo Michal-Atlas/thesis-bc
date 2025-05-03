@@ -81,11 +81,13 @@ if __name__ == "__main__":
         # ("ONNXMobileNet", ONNXRunner, {
         #     "model_path": MOBILENET_ONNX_PATH,
         # }),
-        ("OpenCV", CVRunner, {}),
-        ("OpenCV", CVRunner, {
-            "model_path": MOBILENET_TFLITE_PATH,
+        # ("OpenCV", CVRunner, {}),
+        # ("OpenCV", CVRunner, {
+        #     "model_path": MOBILENET_TFLITE_PATH,
+        # }),
+        ("TensorFlow", TFRunner, {
+            "reshape": False,
         }),
-        # ("TensorFlow", TFRunner, {}),
         # ("TensorFlowKeras", TFRunner, {
         #     "model_path": KERAS_MODEL_PATH,
         # }),

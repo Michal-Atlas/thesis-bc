@@ -10,10 +10,15 @@
 \date{2025-05-16}
 \draft
 
-\def\OpenVX{OpenVX™}
+% Inserted into some citation notices
+% Because everybody assumes \LaTeX
+\def\textemdash{-}
+\def\texttrademark{™}
+
+% Maybe will be changed later
+\def\OpenVX{OpenVX\texttrademark}
 \def\VeriSilicon{VeriSilicon}
 \def\NXP{NXP}
-\def\textemdash{-}
 
 \totf
 
@@ -185,10 +190,10 @@ or a directory of files.
 
 \midinsert \clabel[safetensordef]{SafeTensor format structure}
 \ctable{ll}{
-	Size & Content \crl
-	8 bytes & size of header \cr
-	N bytes & header \cr
-	rest & byte-buffer (little-endian)
+Size & Content \crl
+8 bytes & size of header \cr
+N bytes & header \cr
+rest & byte-buffer (little-endian) \cr
 }
 \caption/t SafeTensor format structure
 \endinsert
@@ -243,6 +248,86 @@ Contains build commands for the \code{wic} command.
 \code{.dts} describes hardware.\urlnote{https://wiki.freebsd.org/FlattenedDeviceTree\#Device\_tree\_source\_.28DTS.29}
 Afterwards compiled into \code{.dtb}.
 
+
+\chap \OpenVX~
+
+\OpenVX~is a standard hardware API that can be
+implemented by hardware vendors of
+hardware accelerators
+and exposed as a C API to users \cite[OpenvxPortab2011].
+The Khronos group that
+manages the \OpenVX~specification
+only describes an abstract machine
+and certain operators with defined semantics.
+The implementation of the operators
+in the means of hardware
+is up to the vendor,
+and the specification aims to be written
+in a way as to allow as much optimization
+as possible.
+When we spoke so far of \code{libOpenVX.so},
+that is \VeriSilicon{}'s pre-compiled
+implementation of the \OpenVX~API.
+\OpenVX~officially aims at vision processing specifically,
+however there are Neural Network extensions to allow
+using the same pipeline to also accelerate
+machine learning operations utilizing the tensor
+structure from the full \OpenVX~v1.2 Spec,
+and extending it with new operators such as
+\code{vxActivationLayer},
+\code{vxConvolutionLayer},
+\code{vxFullyConnectedLayer},
+\code{vxSoftmaxLayer} and
+more\cite[OpenVXNNE].
+
+Known Implementors of this API are:
+
+\begitems \style d
+* {VeriSilicon}
+
+The \code{libOpenVX.so} object all our libraries link against.
+
+* {KhronosGroup/OpenVX-sample-impl}
+
+Only truly open-source implementation,
+however it is supposedly very ad-hoc,
+slowly implemented,
+and emulates the given operators on
+CPU or related using OpenCL \cite[KhronosgroupOp2024].
+
+* {TexasInstruments/tiovx}
+
+Source available but only authorized for use on TI hardware
+
+* {AMD MIVisionX}
+
+Part of the ROCm environment,
+it implements \OpenVX~over AMD's
+GPUs and CPUS\cite[OpenVXAMD].
+
+* {Intel OpenVINO}
+* {Nvidia VisionWorks}
+\enditems
+
+However only the relevant vendor makes sense
+to use as it is tightly coupled to the given device
+that is to be controlled with it.
+
+\OpenVX~still uses a graph abstraction,
+however the operations are far too low-level
+to be convenient and useful for the purposes
+of general purpose machine learning jobs.
+Especially since they do not
+interoperate with existing well known
+formats from the public machine learning ecosystem.
+Which is why we opted to rather
+focus on relevant and convenient libraries
+that wrap \OpenVX~instead of calling it directly.
+
+Further information about what the library
+handles is given in the chapter on
+Startup  (see \ref[startup]).
+
 \chap TIM-VX
 
 \midinsert
@@ -274,7 +359,7 @@ The repositories are initialized from
 an Extensible Markup Language (XML)
 file hosted in an arbitrary repository,
 which contains a set of remotes and
-"projects" (repositories)
+``projects''\rfc{TODO fix english quotes} (repositories)
 that will be fetched into the final checkout.
 
 \glos {XML}{Extensible Markup Language}
@@ -294,7 +379,7 @@ the NXP-IMX manifest was used in the end.
 Mostly due to mismatches in \code{gstreamer} versions
 as meta-imx requires a version not below 1.24.0,
 but the bsp provides 1.22.5.
-The result of this is found in the Appendix \ref[buildconf].
+The result of this is found in the Appendix Build Configuration.
 
 Following this we configure a build directory
 with the Machine: \code{tqma8mpxl-mba8mpx}
@@ -665,11 +750,11 @@ These models also always have a static type of input and outputs
 that may be unconstrained by the Python class which implements it
 but must be specified explicitly when exporting.
 The part of the type that determines the size of a tensor
-is usually called their "shape" in this context.
+is usually called their ``shape'' in this context.
 We set our input shape to \code{(100,128)} in this example
 so the exported graph has annotations like \code{f32[100, 128]}.
 
-Oftentimes a model is made to accept a large "batch" of inputs
+Oftentimes a model is made to accept a large ``batch'' of inputs
 to parallelize inference.
 This is implemented as simply
 setting the first dimension as dynamic,
@@ -749,9 +834,49 @@ and then calling as \code{x = self.relu(x)} in our \code{forward} function.
 
 Methods such as \code{.to()}/\code{.cpu()}/\code{.ipu()},
 cause our model to be run on the given target device.
-However, this also hints to the given framework
+However, this may also hint to the given framework
 what the target is which is also taken into account
-in cases of optimization.
+in cases of optimization,
+our chosen ones do not do this and use other ways to specify both
+where and how to run.
+
+\sec Exporting Models to files
+
+This step is extremely important as it can make or break
+the model's performance.
+First and foremost, TensorFlow has the function
+\code{tf.saved_model.save()}
+which simply dumps a bunch of files into a directory
+that represent the model.
+This isn't as interesting as the \code{tf.lite.TFLiteConverter}
+module.
+The \code{converter} object is constructed from
+one of a keras model,
+a \code{saved_model} path generated by the above save function,
+or a concrete function.
+After creation we can set a vast number of options
+such as \code{.optimizations}, \code{.inference_input_type}
+or \code{.target_spec.supported_ops}.
+Most importantly we should set optimizations to the value
+\code{[tf.lite.Optimize.DEFAULT]},
+as without this the model won't quantize,
+nor perform very well.
+Once this is done setting inference in/out-put types
+is optional and useful for quantization.
+It must be stated however that
+mixing types in the graph leads to something called
+hybrid data types,
+which are not supported by the NPU
+and LiteRT will simply signal an error
+and fall back onto the CPU delegate.
+
+When quantizing the concept of a representative dataset comes into play.
+In Python this takes the form of a generator
+that returns a random assortment of inputs from a dataset,
+so that the model may be inspected
+for patterns,
+minimum and maximum values that occur at different points,
+in order to minimize the effect of quantization on accuracy.
 
 \sec Keras
 
@@ -858,7 +983,7 @@ we can read about configuration variables.
 \begitems \style d
 * {\code{USE_GPU_INFERENCE}} As the NPU and GPU share this driver,
 TIM-VX uses the value of this variable to determine
-which to use, "1" for GPU or "0" for NPU.
+which to use, ``1'' for GPU or ``0'' for NPU.
 \enditems
 
 \secc Profiling
@@ -887,6 +1012,7 @@ Only applies to CPU/GPU.
 \enditems
 
 \secc Model Caching
+\label[model_caching]
 \begitems \style d
 * {\code{VIV_VX_ENABLE_CACHE_GRAPH_BINARY}}
 
@@ -922,7 +1048,7 @@ The NPU can be set to 4 different states,
 
 \sec LiteRT (Lite RunTime)
 
-This project is closely related to tensorflow
+This project is closely related to TensorFlow
 and acts as its ambassador for resource-constrained devices.
 Tensorflow is used to train, prepare, and debug the model,
 before it's deployed to a device
@@ -1119,7 +1245,7 @@ outputs = session.run(None, {"input": inputTensor})
 You may convert any torch model into ONNX.
 Snippet \ref[torch2onnx] shows how
 given a torch/tensorflow model one can export
-it into a onnx file.
+it into an onnx file.
 
 \midinsert
 \label[torch2onnx]
@@ -1198,74 +1324,115 @@ NNAPI, however that is completely unrelated.
 \secc Paddle Paddle
 \rfc{BIG TODO}
 
-\sec \OpenVX~
+\chap Performance
 
-\OpenVX~is a standard hardware API that can be
-implemented by hardware vendors of
-hardware accelerators
-and exposed as a C API to users \cite[OpenvxPortab2011].
-The Khronos group that
-manages the \OpenVX~specification
-only describes an abstract machine
-and certain operators with defined semantics.
-The implementation of the operators
-in the means of hardware
-is up to the vendor,
-and the specification aims to be written
-in a way as to allow as much optimization
-as possible.
-When we spoke so far of \code{libOpenVX.so},
-that is \VeriSilicon{}'s pre-compiled
-implementation of the \OpenVX~API.
-\OpenVX~officially aims at vision processing specifically,
-however there are Neural Network extensions to allow
-using the same pipeline to also accelerate
-machine learning operations utilizing the tensor
-structure from the full \OpenVX~v1.2 Spec,
-and extending it with new operators such as
-\code{vxActivationLayer},
-\code{vxConvolutionLayer},
-\code{vxFullyConnectedLayer},
-\code{vxSoftmaxLayer} and
-more\cite[OpenVXNNE].
-
-Known Implementors of this API are:
-
-\begitems \style d
-* {VeriSilicon}
-
-The \code{libOpenVX.so} object all our libraries link against.
-
-* {KhronosGroup/OpenVX-sample-impl}
-
-Only truly open-source implementation,
-however it is supposedly very ad-hoc,
-slowly implemented,
-and emulates the given operators on
-CPU or related using OpenCL \cite[KhronosgroupOp2024].
-
-* {TexasInstruments/tiovx}
-
-Source available but only authorized for use on TI hardware
-\enditems
-
-However only the relevant vendor makes sense
-to use as it is tightly coupled to the given device
-that is to be controlled with it.
-
-\OpenVX~still uses a graph abstraction,
-however the operations are far too low-level
-to be convenient and useful for the purposes
-of general purpose machine learning jobs.
-Especially since they do not
-interoperate with existing well known
-formats from the public machine learning ecosystem.
-Which is why we opted to rather
-focus on relevant and convenient libraries
-that wrap \OpenVX~instead of calling it directly.
-
-\chap Speedup
 \sec Theoretical advantages
+.\rfc{BIG TODO?}
+
+\sec Startup
+\label[startup]
+
+This is apparent when running the C++ example where
+measuring the entire program's runtime
+results in 0.2 seconds on CPU and
+3.4 seconds when running on NPU
+even though the internal timer
+measuring pure inference time shows
+that NPU speeds up inference from 35ms to 3ms.
+
+After first starting a program you must run
+at least one so-called ``warmup'' inference
+which leads to the pipeline of
+compilation, optimization,
+deciding on tiling,
+and generally preparing the model for a run,
+before actually running inference on the given model.
+We state ``at least one'' because
+that is what the documentation states,
+we only encountered warmup requiring one
+inference run,
+however documentation advises to first
+test how warmup behaves for the given model
+and then determine how to benchmark.
+This takes time in a magnitude of seconds to
+tens of seconds depending on model size.
+After this first inference all subsequent inferences
+should be a consistent and much higher speed,
+as long as that model's handle is kept\cite[AN12964].
+
+The abstract graph built by the user
+is analyzed by the implementation
+and operations may be merged,
+changed and transformed
+as to provide the best possible
+performance\cite[OpenvxGraphOpAbeysi2019].
+This is what takes up
+the crux of the startup delay
+and what graph binary caching (see \ref[model_caching])
+tries to address.
+It does not affect runs of instance of a program,
+but rather skips part of the ``warmup''
+inference in subsequent runs.
+
+Input data must be split into
+smaller fixed-size chunks to fit
+onto on-chip memory and
+so that possible offloads into
+DRAM and other expensive
+memory operations may be minimized.
+This is done automatically by the implementation
+however shows up often in performance logs.
+The DMA controller then requests
+and processes tiles as the NPU requires.
+
+\secc Dynamic loading of Libraries
+
+In the case of both the \code{Python} and \code{C++} interfaces,
+using either \code{ONNX} or \code{LiteRT},
+the case always is that the interfacing library
+must be loaded dynamically.
+Loading may take up a significant amount of time,
+in one experiment the Python profiler
+shows 7\% of the runtime taken up by \code{do_lookup_x} from \code{ld-linux.so}.
+
+\secc Bus
+
+Since the NPU acts as a completely separate device from the
+standard SOC's CPU and memory,
+even having its own clock,
+we must transfer the model and input parameters
+over a AXI/AHB bus
+and that takes time.
+
+Behind that Bus lies a Memory Controller,
+scheduler and more which all work together to slow down the call
+especially initially.
+
+\glos {AXI}{Advanced eXtensible Interface}
+\glos {AHB}{Advanced High-performance Bus}
+
+If a tensor or other piece of our
+pipeline is marked as being bound
+to memory on the device it is
+called a ``device tensor''\cite[DeviceTensors].
+As an example CUDA allows
+the creation of a batch of memory marked
+``CudaPinned'' which is asynchronously
+accessible to the device.
+
+\secc NPU Clogging
+
+During tests it often happens that if the input data
+is too large, or the NPU is otherwise mishandled
+then all further requests to it simply
+block forever.
+I am sure the NPU can be reset,
+however we opted to just restart the device for now
+whenever this occurs,
+sometimes having to hard-kill all processes that
+are working with the NPU as they even block system restarts.
+
+
 \sec Benchmarking Practical Results
 
 Running the same model under LiteRT and ONNX,
@@ -1282,9 +1449,45 @@ the NPU has the same performance under both.
 \ctable{lrrr}{
 Framework & CPU & NPU Warmup & NPU \crl
 ONNX & 50ms & 16ms & 4ms \cr
-LiteRT & 132ms & 380ms & 3ms
+LiteRT & 132ms & 380ms & 3ms \cr
 }
 \caption/t mobilenet_v1_1.0_224_quant Performance Metrics
+\endinsert
+
+\midinsert
+\clabel[qperf]{Quantized Performance Metrics}
+\ctable{lrrr}{
+Type & CPU & NPU Warmup & NPU \crl
+F32 & 107ms & 6.4s & 11ms \cr
+I8 & 107ms & 6.5s & 10ms \cr
+F32 (No optimization) & 98ms & 749ms & 345ms \cr
+}
+\caption/t MobileNetV3Large Quantization tests
+\endinsert
+
+Table \ref[qperf] shows us that the biggest difference
+is whether or not optimizations are enabled.
+For these we use the built-in \code{keras.applications}
+models.
+They are ready-made, of various sizes,
+well-documented,
+don't use exotic operators,
+and accurately depict what a common
+workload might look like,
+so we decided they'd make good sources of
+performance data.
+
+\midinsert
+\clabel[vgg19perf]{Quantized Performance Metrics}
+\ctable{lrrr}{
+Model & CPU & NPU Warmup & NPU \crl
+VGG19 & 4s & 37s & 34ms \cr
+MobileNetV3Large & 107ms & 6.4s & 11ms \cr
+MobileNetV3Small & 36ms & 2.6s & 4ms \cr
+MobileNetV2 & 82ms & 5.1s & 9ms \cr
+MobileNet & 131ms & 5.5s & 7ms \cr
+}
+\caption/t Various Models performance
 \endinsert
 
 The NPU is optimized for specific tasks
@@ -1292,67 +1495,14 @@ so certain operands may end up just being run
 on the CPU even if the NPU is set as the target,
 only emitting a Warning notice to stderr.
 
-In addition, an atypical model may even run slower
+In addition, an inefficiently built model may even run slower
 on NPU due to the various overheads if
-it is not something the machinery knows how to handle,
+it is not something that gets optimized,
 bumping a 52ms runtime on the CPU up to
 a consistent 200ms on the NPU.
 I reiterate,
 enabling hardware acceleration slowed down
 our inference to 25\% of what it achieved on just CPU.
-
-\sec Device Tensors
-.\urlnote{https://onnxruntime.ai/docs/performance/device-tensor.html}
-
-\sec Startup slowdowns
-
-This is apparent when running the C++ example where
-measuring the entire program's runtime
-results in 0.2 seconds on CPU and
-3.4 seconds when running on NPU
-even though the internal timer
-measuring pure inference time shows
-that NPU speeds up inference from 35ms to 3ms.
-
-\secc Dynamic loading of Libraries
-
-In the case of both the \code{Python} and \code{C++} interfaces,
-using either \code{ONNX} or \code{LiteRT},
-the case always is that the interfacing library
-must be loaded dynamically.
-Loading may take up a significant amount of time,
-in one experiment the Python profiler
-shows 7\% of the runtime taken up by \code{do_lookup_x} from \code{ld-linux.so}.
-
-\secc Tiling and Compilation
-.\rfc{BIG TODO}
-
-\secc Bus
-
-Since the NPU acts as a completely separate device from the
-standard SOC's CPU and memory,
-even having its own clock,
-we must transfer the model and input parameters
-over a AXI/AHB bus
-and that takes time.
-Behind that Bus lies a Memory Controller,
-scheduler and more which all work together to slow down the call
-especially initially.
-
-\glos {AXI}{Advanced eXtensible Interface}
-\glos {AHB}{Advanced High-performance Bus}
-
-\secc NPU Clogging
-
-During tests it often happens that if the input data
-is too large, or the NPU is otherwise mishandled
-then all further requests to it simply
-block forever.
-I am sure the NPU can be reset,
-however we opted to just restart the device for now
-whenever this occurs,
-sometimes having to hard-kill all processes that
-are working with the NPU as they even block system restarts.
 
 \chap Suggesting PikeOS integration
 

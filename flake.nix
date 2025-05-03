@@ -190,7 +190,7 @@
                 scp -r py/test_model* py/test_rig imx:
               '')
               (pkgs.writeShellScriptBin "rebib" ''
-                papis --cc export --all > ~/cl/thesis/thesis.bib
+                papis --cc --color always export --all > ~/cl/thesis/thesis.bib
               '')
             ];
           };
