@@ -77,7 +77,7 @@ def run_profiled(name, module, extra):
 if __name__ == "__main__":
     # torch.set_default_dtype(torch.uint8)
     runners = [
-        # ("ONNX", ONNXRunner, {}),
+        ("ONNX", ONNXRunner, {}),
         # ("ONNXMobileNet", ONNXRunner, {
         #     "model_path": MOBILENET_ONNX_PATH,
         # }),

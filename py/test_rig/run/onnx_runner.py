@@ -3,7 +3,7 @@ from typing import List, Union, Literal
 import numpy as np
 import onnxruntime as rt
 
-from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, INPUT_TYPE_NP, MOBILENET_TFLITE_PATH
+from test_rig.config import ONNX_MODEL_PATH, INPUT_SHAPE, INPUT_TYPE_NP, MOBILENET_TFLITE_PATH, KERAS_MODEL_PATH
 from test_rig.run.runner_class import Runner, DevType
 
 

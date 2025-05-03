@@ -1466,8 +1466,9 @@ F32 (No optimization) & 98ms & 749ms & 345ms \cr
 \endinsert
 
 Table \ref[qperf] shows us that the biggest difference
-is whether or not optimizations are enabled.
-For these we use the built-in \code{keras.applications}
+lies in whether or not optimizations are enabled.
+For the next Table \ref[vgg19perf]
+we use the built-in \code{keras.applications}
 models.
 They are ready-made, of various sizes,
 well-documented,
@@ -1503,6 +1504,13 @@ a consistent 200ms on the NPU.
 I reiterate,
 enabling hardware acceleration slowed down
 our inference to 25\% of what it achieved on just CPU.
+
+Testing with absolutely minimal models like the one
+suggested for usage on the MNIST dataset,
+shows that below some threshold of size
+the CPU is again faster.
+For example the NPU will not go below $40μs$
+while the CPU manages $180μs$.
 
 \chap Suggesting PikeOS integration
 
@@ -1569,10 +1577,15 @@ Or in the cases where a roadblock was hit
 we described what the next step would
 be in getting it to work.
 
-The libraries were benchmarked on CPU and NPU,
+We identified a good set of models to use for benchmarks
+and then benchmarked the libraries on CPU and NPU,
 concluding that in terms of raw NPU
 inference perforance on the same model
 their differences are negligible.
+And that the NPU itself achieves
+tenfold or hundredfold performance compared to the CPU,
+when configured correctly,
+depending on model.
 
 Finally we outlined which libraries are relevant
 for PikeOS to claim NPU support
