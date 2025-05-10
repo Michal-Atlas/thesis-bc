@@ -45,7 +45,7 @@ class TFRunner(Runner):
     def load_data(self):
         input_details = self.model.get_input_details()
         for input_detail in input_details:
-            print(f"===> {input_detail['dtype']}")
+            print(f"===> {input_detail['dtype']} ({input_detail['shape']})")
             shape = input_detail['shape']
             size = (BATCH_SIZE, *shape[1:]) if self.reshape else shape
             input_data = np.full(fill_value=[42], shape=size,

@@ -77,7 +77,7 @@ def run_profiled(name, module, extra):
 if __name__ == "__main__":
     # torch.set_default_dtype(torch.uint8)
     runners = [
-        ("ONNX", ONNXRunner, {}),
+        # ("ONNX", ONNXRunner, {}),
         # ("ONNXMobileNet", ONNXRunner, {
         #     "model_path": MOBILENET_ONNX_PATH,
         # }),
@@ -91,11 +91,11 @@ if __name__ == "__main__":
         # ("TensorFlowKeras", TFRunner, {
         #     "model_path": KERAS_MODEL_PATH,
         # }),
-        # ("TensorFlowMobileNet", TFRunner, {
-        #     "model_path": MOBILENET_TFLITE_PATH,
-        #     "dtype": np.uint8,
-        #     "reshape": False,
-        # }),
+        ("TensorFlowMobileNet", TFRunner, {
+            "model_path": MOBILENET_TFLITE_PATH,
+            "dtype": np.uint8,
+            "reshape": False,
+        }),
         # TVMRunner,
     ]
     for (n, m, e) in runners:

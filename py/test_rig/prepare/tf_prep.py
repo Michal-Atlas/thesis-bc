@@ -85,11 +85,13 @@ def save():
         # tf.keras.applications.ConvNeXtTiny
         # tf.keras.applications.VGG19
         # tf.keras.applications.ResNet152
-        tf.keras.applications.MobileNetV3Large
+        # tf.keras.applications.MobileNetV3Large
+        tf.keras.applications.MobileNetV3Small
         # tf.keras.applications.EfficientNetB0
         # tf.keras.applications.xception.Xception
             (
         input_shape=(224, 224, 3),
+        # input_shape=(1280, 720, 3),
         include_top=False,
         # batch_size=1,
         # dtype=INPUT_TYPE_NP,
