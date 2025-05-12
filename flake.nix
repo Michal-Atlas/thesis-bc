@@ -105,7 +105,7 @@
                 while ${self'.packages.tex}/bin/optex thesis.tex | tee /dev/stderr | grep -Eq 'again|rerun'; do :; done
               '';
               installPhase = ''
-                mv *.pdf $out
+                mv thesis.pdf $out
               '';
             };
             onnxscript = pkgs.python311Packages.buildPythonPackage rec {
