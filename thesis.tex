@@ -124,21 +124,21 @@ In Prague on May 16, 2025 % !! Attention, you have to change this item.
 
 \chap Introduction
 
-Our computing devices have come a long way in terms of speed
+Our computing devices have come a long way in terms of speed,
 and of course in terms of operating complexity.
 This complexity can hold back very general purpose processing units
 in performance when it comes to highly specialized tasks.
-For a long time GPUs were used where a large number
+For a long time, GPUs were used where a large number
 of specialized identical operations needed to be performed on
 a vast array of differing data inputs,
-as their specialized design for this use-case made them incomparably faster than
-using a common general purpose CPU.
+as their specialized design for this use case made them incomparably faster than
+using a common general-purpose CPU.
 Though most often associated with their namesake of graphics,
-they excel at many applications and have become a
+they excel in many applications and have become a
 valuable tool when working with neural networks.
 
-Recently even more specialized hardware has become available
-to meet the rising demand in having access to these technologies
+Recently, even more specialized hardware has become available
+to meet the rising demand to have access to these technologies
 in more portable devices or for use in embedded situations.
 Neural Processing Units\fnote{
 Historically also called Versatile/Tensor/Intelligence Processing Units (VPU/TPU/IPU),
@@ -149,10 +149,12 @@ are becoming more common,
 however these don't often come with universal drivers
 and the most widespread standard today has no freely adoptable implementation.
 
-Our goals in this thesis are to initially lay out the defined and known terms used in the context of neural nets, such as hardware, alternate names of known concepts or file formats.
+Our goals in this thesis are to initially lay out the defined and known terms used in the context of neural nets, such as hardware, alternate names of known concepts,
+or file formats.
 Following this we shall go through the existing solutions implementing both the communication with actually hardware in the form of modules followed by frontend APIs for NPU work.
 We will then go through the advantages that this hardware should in theory provide followed by a practical test of the actual results on real hardware.
-These will be packaged into demonstration packages than may be run to show off and/or verify these results.
+The code will be made available so that it may be run to
+test and/or verify these results.
 Finally, we discuss what this means for PikeOS integration of NPU support.
 
 \rfc{
@@ -166,7 +168,7 @@ Finally, we discuss what this means for PikeOS integration of NPU support.
     na konec úvodu můžete vložit stručný popis jednotlivých kapitol práce
 }
 
-As most of our sources are proprietary documentation
+As most of our sources are proprietary documentation,
 this work will sadly be light on detailed images
 and diagrams available in the primary sources.
 
@@ -174,7 +176,7 @@ and diagrams available in the primary sources.
 
 Neural Processing Units (further shortened to NPU) are in general a type of hardware accelerator which is
 optimized to efficiently handle Machine Learning workloads.
-They offer both faster inference and often a lower-energy footprint
+They offer both faster inference and often a lower energy footprint
 on edge devices \cite[BridgingQuantization2025].
 Our NPU in question is composed of a frontend that is used for
 communication between the NPU and the rest of the board,
@@ -195,7 +197,7 @@ and the
 since the traces of this SDK online
 are close to nonexistent)
 VIP-Lite SDK that only contains the runtime for the NPU.
-TIM-VX is used as the target for third-party frameworks targetting the board's NPU.
+TIM-VX is used as the target for third-party frameworks targeting the board's NPU.
 Of these we used specifically the former VeriSilicon SDK
 also often listed as Vivante SDK or directly
 \code{imx-gpu-viv}\fnote{The name is GPU, however it contains shared drivers for both NPU and GPU.}
@@ -231,7 +233,7 @@ linked against by \OpenVX{}.
 
 \chap File Formats
 
-First we present a rundown of the various
+First, we present a rundown of the various
 different formats encountered throughout this work,
 commonly used in the machine learning space
 and during yocto builds and flashes.
@@ -249,12 +251,12 @@ holding the layers and weights of a model,
 and some \code{json} metadata about Keras' configuration,
 the creation date, version information, etc.
 
-HDF stands for Hierarchical Data Format,
+HDF stands for Hierarchical Data Format;
 it contains a POSIX-filesystem style hierarchy of groups
 akin to directories,
 even supporting hard and soft links.
 Datasets take the role of files and contain
-tensors with associated shapes, dtypes and
+tensors with associated shapes and dtypes and
 can be read and written to,
 treating them as numpy arrays \cite[HDF5PY,HDF5FGGS].
 
@@ -308,10 +310,10 @@ or a directory of files.
 * {Pickle}
 
 {\bf\Red This is dangerous to use.}
-Some formats, especially those which allow a wide array
-of Python datatypes may allow unwanted code to execute as well
+Some formats, especially those that allow a wide array
+of Python datatypes, may allow unwanted code to execute as well
 when loaded.
-As a representative of these we mention Pickle.
+As a representative of these, we mention Pickle.
 Since pickling allows arbitrary instances of classes,
 malicious code may be inserted as well into any model downloaded.
 
@@ -327,10 +329,10 @@ can be seen in \fref[pickle_exploit].
 
 Relates to Yocto project's (formerly Intel's) \code{bmaptool} from \cite[YoctoBmap],
 which is used to flash data similarly to \code{dd}.
-Unlike \code{dd} this tool verifies the integrity
+Unlike \code{dd}, this tool verifies the integrity
 of flashed data, supports more complex arrangements
 such as sourcing the image from a remote server,
-supports sparse definitions
+supports sparse definitions,
 and includes protections from accidentally destroying
 data on disks that seem like regular mounted block devices.
 
@@ -344,7 +346,7 @@ and metadata \cite[SPDXDev].
 
 Should your device require
 multiple partitions \cite[YoctoDevManual].
-Use if \code{bmap} isn't supported as it doesn't support
+Use if \code{bmap} is not supported as it does not support
 sparsness, etc.
 
 * {OpenEmbedded kickstart file \code{.wks}}
@@ -354,7 +356,7 @@ Contains build commands for the \code{wic} command \cite[YoctoDevManual].
 * {Flattened Device Tree \code{.fdt} / Device Tree Source \code{.dts}}
 
 Device tree source describes hardware \cite[FreeBSD_FDT],
-and is afterwards compiled into \code{.dtb}.
+and is subsequently compiled into \code{.dtb}.
 Determines how some things are flashed and written based on the target.
 
 \enditems
@@ -370,8 +372,8 @@ manages the \OpenVX~specification
 only describes an abstract machine
 and certain operators with defined semantics.
 The implementation of the operators
-in the means of hardware
-is up to the vendor,
+in terms of hardware
+is completely up to the vendor,
 and the specification aims to be written
 in a way as to allow as much optimization
 as possible.
@@ -400,14 +402,14 @@ The \code{libOpenVX.so} object all our libraries link against.
 * {KhronosGroup/OpenVX-sample-impl}
 
 Only truly open-source implementation,
-however it is supposedly very ad-hoc,
+however, it is supposedly very ad-hoc,
 slowly implemented,
 and emulates the given operators on
 CPU or related using OpenCL \cite[KhronosgroupOp2024].
 
 * {TexasInstruments/tiovx}
 
-Source available but only authorized for use on TI hardware
+Source available but only authorized for use on TI hardware.
 
 * {AMD MIVisionX}
 
@@ -419,7 +421,7 @@ GPUs and CPUS \cite[OpenVXAMD].
 * {Nvidia VisionWorks}
 \enditems
 
-However only the relevant vendor makes sense
+However, only the relevant vendor makes sense
 to use as it is tightly coupled to the given device
 that is to be controlled with it.
 The \code{x86_64} \OpenVX~version
@@ -427,12 +429,12 @@ available from the TIM-VX repository
 only emulates the behaviour of the API
 using the machine's CPU.
 
-\OpenVX~still uses a graph abstraction,
-however the operations are far too low-level
+\OpenVX~still uses a graph abstraction;
+however, the operations are far too low-level
 to be convenient and useful for the purposes
-of general purpose machine learning jobs.
+of general-purpose machine learning jobs.
 Especially since they do not
-interoperate with existing well known
+interoperate with existing well-known
 formats from the public machine learning ecosystem.
 Which is why we opted to rather
 focus on relevant and convenient libraries
@@ -457,20 +459,21 @@ As can be seen in \fref[timvx_diagram] TIM-VX
 is linked against by all our frameworks and many more,
 including the Android soon to be deprecated NNAPI.
 Some of these are officially supported
-by the frameworks themselves,
+by the frameworks themselves, and
 some have official NXP forks
 or third-party forks.
 Beyond the higher-abstractions specifically
-tailored to machine learning it also
+tailored to machine learning, it also
 includes many utilities for debugging.
-The library supports other boards other than ours.
+The library additionally supports
+boards other than our own.
 
 \rfc{TIM-VX BIG TODO}
 
 \chap Setting up the environment
 
 Our testing environment consists of a Yocto distribution,
-running on our afformentioned chip.
+running on our aformentioned chip.
 
 \code{meta-overlay} will further be used to refer
 to our custom layer for the purposes
@@ -1055,7 +1058,7 @@ in order to minimize the effect of quantization on accuracy.
 
 \sec Keras
 
-TensorFlow interops and includes a complete interface to the Keras library,
+TensorFlow interoperates with and includes a complete interface to the Keras library,
 which includes its own additional ways to define models.
 For instance \code{.api.applications} under keras contains prebuilt models
 for various uses such as image recognition
@@ -1366,7 +1369,7 @@ ONNX also encodes a block of operators that encode a more complex task,
 these may be substituted for builtins by the runtime based off
 of their name\fnote{Went through changes in IRv9}.
 The internal structure is a list of acyclically dependent topologically sorted nodes,
-each node providing name, metadata, i/o and the given operation performed.
+each node providing a name, metadata, i/o and the given operation performed.
 ONNX however does provide HOF-like operators that are applied
 to entire subgraphs,
 thus substituting the need for self-references \cite[OnnxConcepts].
@@ -1523,7 +1526,7 @@ at once,
 each needs its own warmup phase and then
 as long as they fit,
 they can be kept and used at will
-intermitenly.
+intermittently.
 
 Some frameworks offer a way to compile
 multiple models so they efficiently live together
@@ -1725,7 +1728,8 @@ porting this ecosystem to a given OS,
 would be to get TIM-VX working as
 that is targeted by all the other
 libraries.
-For that the following must first be addressed.
+For that,
+the following must first be addressed.
 
 \begitems \style d
 
@@ -1735,14 +1739,14 @@ This will be the most difficult part
 as that is closed-source and shipped as a prebuilt
 binary artefact.
 This shared object binary can of course be patched
-and edited to work around some issues,
-however there is little that can be done
+and edited to work around some issues;
+however, there is little that can be done
 if the library does not work
 for some other more nuanced reason.
 
 * {Runtime dependencies}
 
-Luckily libOpenVX has very few runtime dependencies.
+Luckily, libOpenVX has very few runtime dependencies.
 Apart from the standard set of linux libraries
 libOpenVX requires libVSC, libGAL, libArchModelSw and libNNArchPerf,
 all of which are also shipped as binary blobs.
@@ -1754,7 +1758,7 @@ as all of these dependencies are also required by it.
 
 All our mentioned frameworks have multiple sets of bindings,
 primarily always Python and C++, along with a mix of other languages.
-For performance sensitive applications it would be beneficial
+For performance sensitive applications, it would be beneficial
 to support the C++ API while Python will depend on
 whether clients wish to prototype their applications
 on the device or if the workflow
@@ -1808,12 +1812,12 @@ Kapitola 9
 
 \chap Conclusion
 
-We set out to perform reconaissance of
+We set out to perform a reconaissance of
 hardware acceleration
 in the context of machine learning on embedded devices.
 To determine how the hardware is accessed,
 what external libraries let us interface into it,
-and test that the performance gains are as claimed and suspected.
+and to test that the performance gains are as claimed and suspected.
 
 Much of the authors' time was spent
 on familiarization with the bitbake Yocto build system,
@@ -1828,10 +1832,10 @@ several libraries that support it
 even outside the NXP specification.
 
 We either compiled these libraries with NPU support,
-recorded what steps were done to do so
+recorded what steps were done to do so,
 and afterwards described how to specify to the library
 that it should utilize the NPU.
-Or in the cases where a roadblock was hit
+Or in the cases where a roadblock was hit,
 we described what the next step would
 be in getting it to work.
 All the code used is included
@@ -1841,16 +1845,17 @@ We identified a good set of models to use for benchmarks
 and then benchmarked the libraries on CPU and NPU,
 concluding that in terms of raw NPU
 inference perforance on the same model
-their differences are negligible.
-And that the NPU itself achieves
+their differences are negligible,
+if optimized correctly.
+And that the the NPU itself achieves
 tenfold or hundredfold performance compared to the CPU,
 when configured correctly,
 depending on model.
 
-Finally we outlined which libraries are relevant
+Finally, we outlined which libraries are relevant
 for PikeOS to claim NPU support
 and briefly discussed from an outside perspective
-how that might be done
+how that might be done.
 
 \rfc{
 Závěr
