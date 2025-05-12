@@ -9,7 +9,8 @@ images
 nxp-imx/
 *.zip
 *.md
-*.pdf
+thesis.pdf
+slides.pdf
 *.log
 *.ref
 *.img
