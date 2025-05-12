@@ -189,7 +189,7 @@ The open-source Tensor Interface Module \cite[VerisiliconTim2025]
 (further shortened to TIM-VX) which contains C++ bindings,
 and Ovxlib which contains C bindings.
 TIM-XV calls into one of two SDKs, the \VeriSilicon~Unified \OpenVX~SDK
-supporting both compiling and running using either the GPU and NPU units,
+supporting both compiling and running using either the GPU or NPU units,
 and the
 (as far as I can tell proprietary,
 since the traces of this SDK online
@@ -232,8 +232,8 @@ linked against by \OpenVX{}.
 \chap File Formats
 
 First we present a rundown of the various
-different formats encountered throughout this work
-and commonly used in the machine learning space
+different formats encountered throughout this work,
+commonly used in the machine learning space
 and during yocto builds and flashes.
 
 \begitems \style d
@@ -255,7 +255,8 @@ akin to directories,
 even supporting hard and soft links.
 Datasets take the role of files and contain
 tensors with associated shapes, dtypes and
-can be read and written to treating them as numpy arrays \cite[HDF5PY,HDF5FGGS].
+can be read and written to,
+treating them as numpy arrays \cite[HDF5PY,HDF5FGGS].
 
 \midinsert
 \begtt\hisyntax{python}
@@ -282,8 +283,8 @@ data['/layers/dense/vars/0'][0]
 \endinsert
 
 As compression is done by Keras in-memory
-so saving and loading are transparent
-to wether one is working with a ZIP archive
+saving and loading are transparent
+to whether one is working with a ZIP archive
 or a directory of files.
 
 %% * {Safetensors}
@@ -358,7 +359,7 @@ Determines how some things are flashed and written based on the target.
 
 \enditems
 
-\chap \OpenVX~
+\chap \OpenVX~\& TIM-VX
 
 \OpenVX~is a standard hardware API that can be
 implemented by hardware vendors of
@@ -440,8 +441,6 @@ that wrap \OpenVX~instead of calling it directly.
 Further information about what the library
 handles is given in the chapter on
 Startup  (see \ref[startup]).
-
-\chap TIM-VX
 
 \midinsert
 \clabel[timvx_diagram]{TIM-VX Diagram}
@@ -811,6 +810,8 @@ m.forward()
 
 \chap The Graph Workflow
 
+Let us now describe how graphs are commonly constructed.
+
 \sec Python Subclasses modelling Tensor functions
 
 All frameworks have Python APIs,
@@ -937,7 +938,10 @@ model.set_tensor(0, input_data)
 \endinsert
 
 The subset of python supported is quite large,
-even code such as \code{[ sum(n) for n in x ]}
+even code such as:
+\begtt
+[ sum(n) for n in x ]
+\endtt
 will successfully compile into a graph,
 the efficiency of which depends heavily on
 the type of code,
@@ -1053,10 +1057,12 @@ in order to minimize the effect of quantization on accuracy.
 
 TensorFlow interops and includes a complete interface to the Keras library,
 which includes its own additional ways to define models.
-For instance \code{keras.api.applications} contains prebuilt models
+For instance \code{.api.applications} under keras contains prebuilt models
 for various uses such as image recognition
 that can then be freely used and manipulated for our needs.
-Another way is the \code{keras.models.Sequential} class,
+Another way is the
+\code{.models.Sequential}
+class,
 which takes a list of layers and concatenates them
 one after another into a model.
 Keras layers are much like TensorFlow modules.
@@ -1124,7 +1130,7 @@ and so can be controlled using the \VeriSilicon~\code{libOpenVX} implementation.
 \sec NPU Contents
 
 Let us now walk through the contents of our NPU chip.
-Very little information is available completely publicly.
+Very little information is available publicly.
 
 \begitems \style d
 
@@ -1719,31 +1725,30 @@ porting this ecosystem to a given OS,
 would be to get TIM-VX working as
 that is targeted by all the other
 libraries.
+For that the following must first be addressed.
 
 \begitems \style d
 
-The most difficult part will be
-
 * {Porting libOpenVX}
 
+This will be the most difficult part
 as that is closed-source and shipped as a prebuilt
 binary artefact.
 This shared object binary can of course be patched
 and edited to work around some issues,
 however there is little that can be done
-if the library does not work.
-Luckily libOpenVX has very few
+if the library does not work
+for some other more nuanced reason.
 
 * {Runtime dependencies}
 
+Luckily libOpenVX has very few runtime dependencies.
 Apart from the standard set of linux libraries
 libOpenVX requires libVSC, libGAL, libArchModelSw and libNNArchPerf,
 all of which are also shipped as binary blobs.
 Only shipping libOpenVX and omitting TIM-VX
 does not lessen the load substantially,
 as all of these dependencies are also required by it.
-
-Afterwards one of the 
 
 * {Compile TIM-VX against our libOpenVX library and ship it.}
 
@@ -1829,6 +1834,8 @@ that it should utilize the NPU.
 Or in the cases where a roadblock was hit
 we described what the next step would
 be in getting it to work.
+All the code used is included
+as part of this work.
 
 We identified a good set of models to use for benchmarks
 and then benchmarked the libraries on CPU and NPU,

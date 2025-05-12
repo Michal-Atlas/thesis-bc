@@ -43,6 +43,20 @@
             };
           };
           packages = {
+            modern = pkgs.stdenvNoCC.mkDerivation {
+              name = "optex-modern";
+              src = pkgs.fetchurl {
+                url = "https://git.sr.ht/~michal_atlas/gtex/blob/master/src/modern.tex";
+                hash = "sha256-UsrobEY6bczDZHWpQ41yzfYJCyccaQew1zVzfPsEEVA";
+              };
+              dontUnpack = true;
+              installPhase = ''
+                dest=$out/tex/luatex/modern
+                mkdir -p $dest
+                cp $src $dest/modern.tex
+              '';
+              passthru.tlType = "run";
+            };
             ctustyle3 = pkgs.stdenvNoCC.mkDerivation {
               name = "CTUstyle3";
               src = pkgs.fetchFromGitHub {
@@ -67,10 +81,16 @@
               passthru.tlType = "run";
             };
             tex = pkgs.texlive.combine {
-              inherit (pkgs.texlive) scheme-small optex;
+              inherit (pkgs.texlive)
+                scheme-small
+                optex
+                firamath
+                xits
+                ;
               ctustyle3 = {
-                pkgs = [
-                  self'.packages.ctustyle3
+                pkgs = with self'.packages; [
+                  ctustyle3
+                  modern
                 ];
               };
             };
