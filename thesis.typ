@@ -6,20 +6,19 @@
 
 #show: codly-init.with()
 #codly(
-  languages: codly-languages
-    + (
-      dockerfile: (
-        name: "Dockerfile",
-        icon: [#fa-icon("docker") ],
-        color: rgb("#0db7ed"),
-      ),
-      bitbake: (name: "BitBake", color: rgb("#0098db")),
-      onnx-ir: (
-        name: "ONNX IR",
-        color: rgb("#323031"),
-        icon: [#fa-icon("connectdevelop") ],
-      ),
+  languages: codly-languages + (
+    dockerfile: (
+      name: "Dockerfile",
+      icon: [#fa-icon("docker") ],
+      color: rgb("#0db7ed"),
     ),
+    bitbake: (name: "BitBake", color: rgb("#0098db")),
+    onnx-ir: (
+      name: "ONNX IR",
+      color: rgb("#323031"),
+      icon: [#fa-icon("connectdevelop") ],
+    ),
+  ),
   zebra-fill: rgb("#FFFFFF").darken(2%),
 )
 
@@ -92,15 +91,17 @@
 
 #import "@preview/clean-math-thesis:0.3.0": template
 
+#let nojpar(content) = par(justify: false, content)
+
 #show: template.with(
-  title: "SW support for NPU accelerators for Linux-type operating systems",
+  title: nojpar("SW support for NPU accelerators for Linux-type operating systems"),
   author: "Michal Žáček",
   supervisor1: "Petr Zemánek",
   supervisor2: "",
   program: "Systems and Virtualization",
   degree: "Bachelor's",
-  university: "Czech Technical University in Prague",
-  institute: "Faculty of Information Technology",
+  university: nojpar("Czech Technical University in Prague"),
+  institute: nojpar("Faculty of Information Technology"),
   deadline: "2025-05-26",
   city: "Prague",
   uni-logo: image("./logo_cvut_en.svg"),
@@ -125,6 +126,7 @@
     and what porting them could entail.
 
     === Keywords
+
     hardware acceleration,
     embedded,
     machine learning hardware,
@@ -165,6 +167,9 @@
   heading-color: pantone300,
 )
 
+#let table-header(..headers) = {
+  table.header(..headers.pos().map(strong))
+}
 #show heading: it => {
   it
   v(0.4em)
@@ -197,9 +202,12 @@ In Prague on May 16, 2025: #box(width: 1fr, repeat[.])
 
 #let assignment = read("./zacekmi2-assignment.pdf", encoding: none)
 
-#page(margin: 0pt, context {
-  muchpdf.muchpdf(assignment, width: page.width, height: page.height)
-})
+#page(
+  margin: 0pt,
+  context {
+    muchpdf.muchpdf(assignment, width: page.width, height: page.height)
+  },
+)
 
 = Introduction
 
@@ -1702,7 +1710,7 @@ Since the NPU acts as a completely separate device from the
 standard SOC's CPU and memory,
 even having its own clock,
 we must transfer the model and input parameters
-over an @axi/@ahb bus
+over the @axi and @ahb
 and that takes time.
 
 Behind that Bus lies a Memory Controller,
@@ -1744,9 +1752,14 @@ the NPU has the same performance under both.
 #figure(
   table(
     columns: 4,
-    [Framework], [CPU], [NPU Warmup], [NPU],
-    [ONNX], [50ms], [16ms], [4ms],
-    [LiteRT], [132ms], [380ms], [2.3ms],
+    align: (left, right, right, right),
+    table-header([Framework], [CPU], [NPU Warmup], [NPU]),
+    [ONNX],
+    [50ms],
+    [16ms],
+
+    [4ms], [LiteRT], [132ms], [380ms],
+    [2.3ms],
   ),
   caption: [mobilenet_v1_1.0_224_quant Performance Metrics],
 )
@@ -1764,10 +1777,11 @@ below 24 frames per second on each.
 #figure(
   table(
     columns: 4,
-    [Type], [CPU], [NPU Warmup], [NPU],
-    [F32], [107ms], [6.4s], [11ms],
-    [I8], [107ms], [6.5s], [10ms],
-    [F32 (No optimization)], [98ms], [749ms], [345ms],
+    align: (left, right, right, right),
+    table-header([Type], [CPU], [NPU Warmup], [NPU]), [F32], [107ms], [6.4s],
+    [11ms], [I8], [107ms], [6.5s],
+    [10ms], [F32 (No optimization)], [98ms], [749ms],
+    [345ms],
   ),
   caption: [MobileNetV3Large Quantization tests],
 )
@@ -1793,12 +1807,13 @@ show results
 #figure(
   table(
     columns: 4,
-    [Model], [CPU], [NPU Warmup], [NPU],
-    [VGG19], [4s], [37s], [34ms],
-    [MobileNetV3Large], [107ms], [6.4s], [11ms],
-    [MobileNetV3Small], [36ms], [2.6s], [4ms],
-    [MobileNetV2], [82ms], [5.1s], [9ms],
-    [MobileNet], [131ms], [5.5s], [7ms],
+    align: (left, right, right, right),
+    table-header([Model], [CPU], [NPU Warmup], [NPU]), [VGG19], [4s], [37s],
+    [34ms], [MobileNetV3Large], [107ms], [6.4s],
+    [11ms], [MobileNetV3Small], [36ms], [2.6s],
+    [4ms], [MobileNetV2], [82ms], [5.1s],
+    [9ms], [MobileNet], [131ms], [5.5s],
+    [7ms],
   ),
   caption: [Various Models performance],
 )
@@ -1970,5 +1985,8 @@ meta-clang           = "HEAD:2b7433611d80f6d0ee1b04156fa91fc73d3c2665"
 #nocite(<YoctoPackages>)
 #nocite(<IMx8mPlusDataSheet>)
 
-#bibliography("./thesis.bib", style: "iso-690-numeric")
+#set par(justify: false)
+#show link: underline
+
+#bibliography("./thesis.yml", style: "iso-690-numeric")
 
