@@ -104,8 +104,8 @@
   institute: nojpar("Faculty of Information Technology"),
   deadline: "2025-05-26",
   city: "Prague",
-  uni-logo: image("./logo_cvut_en.svg"),
-  institute-logo: image("./information_technology.svg"),
+  // uni-logo: image("./logo_cvut_en.svg"),
+  // institute-logo: image("./information_technology.svg"),
   abstract: [
     == English
 
