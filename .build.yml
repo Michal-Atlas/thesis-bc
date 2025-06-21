@@ -1,0 +1,19 @@
+image: alpine/edge
+packages:
+  - hut
+  - typst
+oauth: pages.sr.ht/PAGES:RW
+environment:
+  site: michal_atlas.srht.site/thesis-bc
+  name: thesis-bc
+sources:
+  - https://git.sr.ht/~michal_atlas/thesis-bc
+tasks:
+  - build: |
+      cd $name
+      typst compile thesis.{typ,pdf}
+  - package: |
+      cd $name
+      tar -C public -cvz thesis.pdf > ../site.tar.gz
+  - upload: |
+      hut pages publish -d $site site.tar.gz
