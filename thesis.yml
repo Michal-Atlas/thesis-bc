@@ -1,0 +1,508 @@
+ACrossPlatforDavila2022:
+  author:
+  - given-name: Maria Angélica
+    name: Dávila-Guzmán
+  - given-name: Lester
+    name: Kalms
+  - given-name: Rubén
+    name: Gran Tejero
+  - given-name: María
+    name: Villarroya-Gaudó
+  - given-name: Darío
+    name: Suárez Gracia
+  - given-name: Diana
+    name: Göhringer
+  doi: 10.1016/j.sysarc.2021.102372
+  language: en
+  page-range: '102372'
+  parent:
+    date: '2022'
+    issn: '13837621'
+    title: Journal of Systems Architecture
+    type: Periodical
+    volume: '123'
+  title: A cross-platform OpenVX library for FPGA accelerators
+  type: Article
+  url: https://linkinghub.elsevier.com/retrieve/pii/S1383762121002575
+AN12964:
+  parent:
+    type: Web
+  title: i.MX 8M Plus NPU Warmup Time
+  type: Web
+  url:
+    date: 2025-05-03
+    value: https://www.mouser.com/pdfDocs/AN12964.pdf
+AndroidNNAPI:
+  parent:
+    type: Web
+  title: Neural Networks API | Android NDK | Android Developers
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://developer.android.com/ndk/guides/neuralnetworks
+BridgingQuantization2025:
+  author:
+  - given-name: Obed M.
+    name: Mogaka
+  - given-name: Håkan
+    name: Forsberg
+  - given-name: Masoud
+    name: Daneshtalab
+  language: en
+  parent:
+    date: 2025
+    isbn: 979-8-3315-2801-0
+    title: International Symposium on Design and Diagnostics of Electronic Circuits
+      & Systems
+    type: Conference
+  title: 'Bridging Quantization and Deployment: A Fixed-Point Workflow for FPGA Accelerators'
+  type: Article
+CoralEdgeTpuCompiler:
+  parent:
+    type: Web
+  title: Edge TPU Compiler | Coral
+  type: Web
+  url:
+    date: 2025-05-01
+    value: https://coral.ai/docs/edgetpu/compiler/
+DeviceTensors:
+  parent:
+    type: Web
+  title: Device tensors
+  type: Web
+  url:
+    date: 2025-05-03
+    value: https://onnxruntime.ai/docs/performance/device-tensor.html
+EnArmTqma8mpxDeployment:
+  parent:
+    type: Web
+  title: en:arm:tqma8mpxl:linux:yocto:deployment_yocto \textbar TQ Support Wiki
+  type: Web
+  url:
+    date: '2025-01-02'
+    value: https://support.tq-group.com/en/arm/tqma8mpxl/linux/yocto/deployment_yocto
+EnArmTqma8mpxOverview:
+  parent:
+    type: Web
+  title: en:arm:tqma8mpxl:linux:yocto:overview \textbar TQ Support Wiki
+  type: Web
+  url:
+    date: '2025-01-02'
+    value: https://support.tq-group.com/en/arm/tqma8mpxl/linux/yocto/overview
+EnArmTqma8mpxQStart:
+  parent:
+    type: Web
+  title: en:arm:tqma8mpxl:linux:yocto:quickstart_yocto \textbar TQ Support Wiki
+  type: Web
+  url:
+    date: '2025-01-02'
+    value: https://support.tq-group.com/en/arm/tqma8mpxl/linux/yocto/quickstart_yocto
+ExploitingPythHamann2020:
+  author:
+  - given-name: David
+    name: Hamann
+  date: '2020'
+  language: en
+  parent:
+    type: Web
+  title: David Hamann
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://davidhamann.de/2020/04/05/exploiting-python-pickle/
+ExtendingTensoWang2022:
+  author:
+  - given-name: Yanzhao
+    name: Wang
+  - given-name: Fei
+    name: Xie
+  doi: 10.1109/ICECCS54210.2022.00031
+  page-range: 189--194
+  parent:
+    date: '2022'
+    type: Proceedings
+  title: Extending Tensor Virtual Machine to Support Deep-Learning Accelerators with
+    Convolution Cores
+  type: Article
+  url: https://ieeexplore.ieee.org/document/9763822/?arnumber=9763822
+FreeBSD_FDT:
+  parent:
+    type: Web
+  title: FreeBSD Wiki - Flattened Device Tree
+  type: Web
+  url:
+    date: 2025-05-10
+    value: https://wiki.freebsd.org/FlattenedDeviceTree
+GithubNxpIm:
+  parent:
+    type: Web
+  title: 'GitHub - nxp-imx/imx-manifest: i.MX Release Manifest'
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://github.com/nxp-imx/imx-manifest
+GithubPaddle:
+  parent:
+    type: Web
+  title: 'GitHub - PaddlePaddle/Paddle: PArallel Distributed Deep LEarning: Machine
+    Learning Framework from Industrial Practice'
+  type: Web
+  url:
+    date: 2025-05-03
+    value: https://github.com/PaddlePaddle/Paddle
+GoRepo:
+  parent:
+    type: Web
+  title: repo - The Multiple Git Repository Tool
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://gerrit.googlesource.com/git-repo
+GoogleDevBlogChollet:
+  parent:
+    type: Web
+  title: Farewell and thank you for the continued partnership, Francois Chollet!-
+    Google Developers Blog
+  type: Web
+  url:
+    date: 2025-05-10
+    value: https://developers.googleblog.com/en/farewell-and-thank-you-for-the-continued-partnership-francois-chollet/
+HDF5FGGS:
+  parent:
+    type: Web
+  title: The HDF5 Field Guide | Getting Started
+  type: Web
+  url:
+    date: 2025-05-01
+    value: https://support.hdfgroup.org/documentation/hdf5/latest/_intro_h_d_f5.html
+HDF5PY:
+  parent:
+    type: Web
+  title: 'h5py: Manual'
+  type: Web
+  url:
+    date: 2025-04-29
+    value: https://docs.h5py.org/en/stable/quick.html
+HowToUseOpen:
+  date: '2020'
+  language: en
+  parent:
+    type: Web
+  title: NXP Community
+  type: Web
+  url:
+    date: 2025-02-19
+    value: https://community.nxp.com/t5/i-MX-Processors-Knowledge-Base/How-to-use-OpenVX-extension-for-NPU-GPU-to-accelerate-machine/ta-p/1113429
+HttpsWwwTq:
+  parent:
+    type: Web
+  title: MBa8MPxL User's Manual
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://www.tq-group.com/filedownloads/files/products/embedded/manuals/arm/carrierboard/MBa8MPxL/MBa8MPxL.UM.0103.pdf
+IMx8mPlusAp:
+  language: en
+  parent:
+    type: Web
+  title: i.MX 8M Plus Applications Processor Reference Manual
+  type: Web
+  url:
+    date: 2025-01-01
+    value: https://www.nxp.com/webapp/Download?colCode=IMX8MPRM
+IMx8mPlusDataSheet:
+  language: en
+  parent:
+    type: Web
+  title: i.MX 8M Plus Applications Processor Datasheet for Industrial Products
+  type: Web
+  url:
+    date: '2024-10-27'
+    value: https://www.nxp.com/webapp/Download?colCode=IMX8MPIEC
+IMxLinuxUserLfRe2024:
+  author:
+  - given-name: Rev
+    name: Lf
+  date: '2024'
+  language: en
+  parent:
+    type: Web
+  title: i.MX Linux User's Guide
+  type: Web
+IMxMachineLeLfRe2024:
+  language: en
+  parent:
+    type: Web
+  publisher: NXP
+  title: i.MX Machine Learning User's Guide
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://www.nxp.com/docs/en/user-guide/IMX-MACHINE-LEARNING-UG.pdf
+IMxYoctoProjLfRe2024:
+  author:
+  - given-name: Rev
+    name: Lf
+  date: '2024'
+  language: en
+  parent:
+    type: Web
+  title: i.MX Yocto Project User's Guide
+  type: Web
+KerasWikiped:
+  parent:
+    type: Web
+  title: Keras - Wikipedia
+  type: Web
+  url:
+    date: 2025-04-29
+    value: https://en.wikipedia.org/wiki/Keras
+KhronosgroupOp2024:
+  parent:
+    type: Web
+  publisher: The Khronos Group
+  title: KhronosGroup/OpenVX-sample-impl
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://github.com/KhronosGroup/OpenVX-sample-impl
+LitertOverview:
+  parent:
+    type: Web
+  title: LiteRT overview - Google AI Edge
+  type: Web
+  url:
+    date: 2025-04-29
+    value: https://ai.google.dev/edge/litert
+LoadingImages:
+  language: en
+  parent:
+    type: Web
+  title: Loading Images with U-Boot - Loading Images with U-Boot
+  type: Web
+  url:
+    date: '2024-10-29'
+    value: https://wiki.emacinc.com/wiki/Loading_Images_with_U-Boot
+ModulePytorc:
+  parent:
+    type: Web
+  title: Module — PyTorch 2.6 documentation
+  type: Web
+  url:
+    date: '2025-02-17'
+    value: https://pytorch.org/docs/stable/generated/torch.nn.Module.html
+NetronApp:
+  parent:
+    type: Web
+  title: Netron App
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://netron.app/
+NixEnvironment:
+  language: en
+  parent:
+    type: Web
+  title: GitHub
+  type: Web
+  url:
+    date: '2025-01-02'
+    value: https://github.com/nix-community/nix-environments/blob/master/envs/yocto/shell.nix
+NxpImxTflite:
+  parent:
+    type: Web
+  title: nxp-imx/tflite-vx-delegate-imx at lf-6.6.23_2.0.0
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://github.com/nxp-imx/tflite-vx-delegate-imx/tree/lf-6.6.23_2.0.0
+ONNXWeb:
+  parent:
+    type: Web
+  title: ONNX
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://onnx.ai/
+OnnxConcepts:
+  parent:
+    type: Web
+  title: ONNX Concepts - ONNX 1.18.0 documentation
+  type: Web
+  url:
+    date: '2025-02-17'
+    value: https://onnx.ai/onnx/intro/concepts.html
+OpenCVTimVxBackend:
+  parent:
+    type: Web
+  title: TIM VX Backend For Running OpenCV On NPU
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://github.com/opencv/opencv/wiki/TIM-VX-Backend-For-Running-OpenCV-On-NPU
+OpenNeuralNet:
+  parent:
+    type: Web
+  title: Open Neural Network Exchange Intermediate Representation (ONNX IR) Specification
+    - ONNX 1.18.0 documentation
+  type: Web
+  url:
+    date: '2025-02-17'
+    value: https://onnx.ai/onnx/repo-docs/IR.html
+OpenVXAMD:
+  parent:
+    type: Web
+  title: AMD OpenVX documentation | ROCm™ Software Future Release
+  type: Web
+  url:
+    date: 2025-05-03
+    value: https://rocm.docs.amd.com/projects/MIVisionX/en/develop/how-to/amd_openvx.html
+OpenVXNNE:
+  parent:
+    type: Web
+  title: The OpenVX™ Neural Network Extension
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://registry.khronos.org/OpenVX/extensions/vx_khr_nn/1.3/html/vx_khr_nn_1_3.html
+OpenvxGraphOpAbeysi2019:
+  author:
+  - given-name: Madushan
+    name: Abeysinghe
+  - given-name: Jesse
+    name: Villarreal
+  - given-name: Lucas
+    name: Weaver
+  - given-name: Jason
+    name: Bakos
+  doi: 10.1109/asap.2019.00-19
+  page-range: 123--130
+  parent:
+    date: 2019
+    location: New York, NY, USA
+    publisher: IEEE
+    title: 2019 IEEE 30th International Conference on Application-specific Systems,
+      Architectures and Processors (ASAP)
+    type: Proceedings
+  title: OpenVX Graph Optimization for Visual Processor Units
+  type: Article
+  url: https://doi.org/10.1109/asap.2019.00-19
+OpenvxPortab2011:
+  date: '2011'
+  language: en
+  parent:
+    type: Web
+  title: The Khronos Group
+  type: Web
+  url:
+    date: '2024-10-25'
+    value: https://www.khronos.org/openvx/
+OpenvxVisionI2020:
+  date: '2020'
+  language: en
+  parent:
+    type: Web
+  title: NXP Community
+  type: Web
+  url:
+    date: '2024-10-27'
+    value: https://community.nxp.com/t5/i-MX-Processors-Knowledge-Base/OpenVX-Vision-Image-Extension-API-Introduction-Basic-API/ta-p/1117280
+PyNNTutorial:
+  parent:
+    type: Web
+  title: PyTorch | Tutorial | NN
+  type: Web
+  url:
+    date: 2025-02-19
+    value: https://pytorch.org/tutorials/beginner/nn_tutorial.html
+PyTorchQuant:
+  parent:
+    type: Web
+  title: PyTorch documentation - Quantization
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://pytorch.org/docs/stable/quantization.html
+SPDXDev:
+  parent:
+    type: Web
+  title: The System Package Data Exchange™ - Learn
+  type: Web
+  url:
+    date: 2025-05-10
+    value: https://spdx.dev/learn/overview/
+SupportedDevic:
+  parent:
+    type: Web
+  title: Supported Devices, Chip Architectures, and Systems - Amazon SageMaker AI
+  type: Web
+  url:
+    date: '2025-02-10'
+    value: https://docs.aws.amazon.com/sagemaker/latest/dg/neo-supported-devices-edge-devices.html
+Texasinstrument2024:
+  date: '2024'
+  parent:
+    type: Web
+  publisher: Texas Instruments
+  title: TexasInstruments/tiovx
+  type: Web
+  url:
+    date: '2024-10-27'
+    value: https://github.com/TexasInstruments/tiovx
+VerisiliconTim2025:
+  parent:
+    type: Web
+  publisher: VeriSilicon Microelectronics (Shanghai) Co., Ltd.
+  title: VeriSilicon/TIM-VX
+  type: Web
+  url:
+    date: 2025-02-10
+    value: https://github.com/VeriSilicon/TIM-VX
+VivanteVIP:
+  parent:
+    type: Web
+  title: Vivante VIP9400 | IP Portfolio
+  type: Web
+  url:
+    date: 2025-05-10
+    value: https://verisilicon.com/en/IPPortfolio/VivanteVIP9400
+WikiONNX:
+  parent:
+    type: Web
+  title: Open Neural Network Exchange - Wikipedia
+  type: Web
+  url: https://en.wikipedia.org/wiki/Open_Neural_Network_Exchange
+YoctoBmap:
+  parent:
+    type: Web
+  title: 'GitHub - yoctoproject/bmaptool: BMAP Tools'
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://github.com/yoctoproject/bmaptool
+YoctoDevManual:
+  parent:
+    type: Web
+  title: The Yocto Project - Dev Manual
+  type: Web
+  url:
+    date: 2025-05-10
+    value: https://docs.yoctoproject.org/dev/dev-manual/
+YoctoPackages:
+  parent:
+    type: Web
+  title: Yocto Project Reference Manual | Required Packages for the Host Development
+    System
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://docs.yoctoproject.org/2.4/ref-manual/ref-manual.html#detailed-supported-distros
+Zetane:
+  parent:
+    type: Web
+  title: Zetane | Reliable AI automation for high-risk industries
+  type: Web
+  url:
+    date: 2025-05-02
+    value: https://zetane.com/
+
