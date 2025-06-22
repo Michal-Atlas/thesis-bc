@@ -1,0 +1,34 @@
+on:
+  push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Prerequisites
+        run: sudo apt install -y fonts-font-awesome
+      - uses: actions/checkout@v4.2.2
+      - uses: typst-community/setup-typst@v4.1.0
+      - name: Typst Compile
+        run: typst compile thesis.typ thesis.pdf
+      - name: Move to Directory
+        run: |
+          mkdir build
+          mv thesis.pdf build
+      - name: Upload
+        uses: actions/upload-pages-artifact@v3.0.1
+        with:
+          path: build
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4.0.5
