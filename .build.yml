@@ -2,6 +2,7 @@ image: alpine/edge
 packages:
   - hut
   - typst
+  - font-awesome
 oauth: pages.sr.ht/PAGES:RW
 environment:
   site: michal_atlas.srht.site/thesis-bc
@@ -14,6 +15,6 @@ tasks:
       typst compile thesis.{typ,pdf}
   - package: |
       cd $name
-      tar -C public -cvz thesis.pdf > ../site.tar.gz
+      tar -cvzf ../site.tar.gz thesis.pdf
   - upload: |
       hut pages publish -d $site site.tar.gz
